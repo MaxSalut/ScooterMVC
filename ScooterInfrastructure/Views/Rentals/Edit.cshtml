@@ -1,0 +1,81 @@
+﻿@model ScooterDomain.Model.Rental
+
+@{
+    ViewData["Title"] = "Редагувати оренду";
+}
+
+<h1>Редагувати оренду</h1>
+
+<form asp-action="Edit" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="form-group">
+        <label asp-for="RiderId" class="control-label"></label>
+        @Html.DropDownList("RiderId", ViewData["RiderId"] as SelectList, "-- Виберіть райдера --", new { @class = "form-control" })
+        <span asp-validation-for="RiderId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ScooterId" class="control-label"></label>
+        @Html.DropDownList("ScooterId", ViewData["ScooterId"] as SelectList, "-- Виберіть скутер --", new { @class = "form-control" })
+        <span asp-validation-for="ScooterId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="StatusId" class="control-label"></label>
+        @Html.DropDownList("StatusId", ViewData["StatusId"] as SelectList, "-- Виберіть статус --", new { @class = "form-control" })
+        <span asp-validation-for="StatusId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="StartTime" class="control-label"></label>
+        <input asp-for="StartTime" class="form-control" type="datetime-local" />
+        <span asp-validation-for="StartTime" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="EndTime" class="control-label"></label>
+        <input asp-for="EndTime" class="form-control" type="datetime-local" />
+        <span asp-validation-for="EndTime" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="TotalCost" class="control-label"></label>
+        <input asp-for="TotalCost" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="TotalCost" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="PaymentDate" class="control-label"></label>
+        <input asp-for="PaymentDate" class="form-control" type="datetime-local" />
+        <span asp-validation-for="PaymentDate" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="Amount" class="control-label"></label>
+        <input asp-for="Amount" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="PaymentMethodId" class="control-label"></label>
+        @Html.DropDownList("PaymentMethodId", ViewData["PaymentMethodId"] as SelectList, "-- Виберіть спосіб оплати --", new { @class = "form-control" })
+        <span asp-validation-for="PaymentMethodId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="Зберегти" class="btn btn-primary" />
+    </div>
+</form>
+
+<div>
+    <a asp-action="Index" asp-route-riderId="@Model.RiderId">Повернутися до списку</a>
+</div>
+
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
