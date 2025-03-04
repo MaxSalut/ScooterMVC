@@ -6,73 +6,68 @@
 
 <h1>Редагувати оренду</h1>
 
-<form asp-action="Edit" method="post">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-    <input type="hidden" asp-for="Id" />
-
-    <div class="form-group">
-        <label asp-for="RiderId" class="control-label"></label>
-        @Html.DropDownList("RiderId", ViewData["RiderId"] as SelectList, "-- Виберіть райдера --", new { @class = "form-control" })
-        <span asp-validation-for="RiderId" class="text-danger"></span>
+<h4>Оренда</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="RiderId" class="control-label">Користувач</label>
+                <select asp-for="RiderId" class="form-control" asp-items="ViewBag.RiderId"></select>
+                <span asp-validation-for="RiderId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ScooterId" class="control-label">Скутер</label>
+                <select asp-for="ScooterId" class="form-control" asp-items="ViewBag.ScooterId"></select>
+                <span asp-validation-for="ScooterId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StatusId" class="control-label">Статус</label>
+                <select asp-for="StatusId" class="form-control" asp-items="ViewBag.StatusId"></select>
+                <span asp-validation-for="StatusId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartTime" class="control-label">Час початку</label>
+                <input asp-for="StartTime" class="form-control" />
+                <span asp-validation-for="StartTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EndTime" class="control-label">Час завершення</label>
+                <input asp-for="EndTime" class="form-control" />
+                <span asp-validation-for="EndTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalCost" class="control-label">Загальна вартість</label>
+                <input asp-for="TotalCost" class="form-control" />
+                <span asp-validation-for="TotalCost" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentDate" class="control-label">Дата оплати</label>
+                <input asp-for="PaymentDate" class="form-control" />
+                <span asp-validation-for="PaymentDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Amount" class="control-label">Сума оплати</label>
+                <input asp-for="Amount" class="form-control" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentMethodId" class="control-label">Спосіб оплати</label>
+                <select asp-for="PaymentMethodId" class="form-control" asp-items="ViewBag.PaymentMethodId"></select>
+                <span asp-validation-for="PaymentMethodId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
     </div>
-
-    <div class="form-group">
-        <label asp-for="ScooterId" class="control-label"></label>
-        @Html.DropDownList("ScooterId", ViewData["ScooterId"] as SelectList, "-- Виберіть скутер --", new { @class = "form-control" })
-        <span asp-validation-for="ScooterId" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="StatusId" class="control-label"></label>
-        @Html.DropDownList("StatusId", ViewData["StatusId"] as SelectList, "-- Виберіть статус --", new { @class = "form-control" })
-        <span asp-validation-for="StatusId" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="StartTime" class="control-label"></label>
-        <input asp-for="StartTime" class="form-control" type="datetime-local" />
-        <span asp-validation-for="StartTime" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="EndTime" class="control-label"></label>
-        <input asp-for="EndTime" class="form-control" type="datetime-local" />
-        <span asp-validation-for="EndTime" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="TotalCost" class="control-label"></label>
-        <input asp-for="TotalCost" class="form-control" type="number" step="0.01" />
-        <span asp-validation-for="TotalCost" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="PaymentDate" class="control-label"></label>
-        <input asp-for="PaymentDate" class="form-control" type="datetime-local" />
-        <span asp-validation-for="PaymentDate" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Amount" class="control-label"></label>
-        <input asp-for="Amount" class="form-control" type="number" step="0.01" />
-        <span asp-validation-for="Amount" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="PaymentMethodId" class="control-label"></label>
-        @Html.DropDownList("PaymentMethodId", ViewData["PaymentMethodId"] as SelectList, "-- Виберіть спосіб оплати --", new { @class = "form-control" })
-        <span asp-validation-for="PaymentMethodId" class="text-danger"></span>
-    </div>
-
-    <div class="form-group">
-        <input type="submit" value="Зберегти" class="btn btn-primary" />
-    </div>
-</form>
-
-<div>
-    <a asp-action="Index" asp-route-riderId="@Model.RiderId">Повернутися до списку</a>
 </div>
 
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
 
 @section Scripts {
     @{

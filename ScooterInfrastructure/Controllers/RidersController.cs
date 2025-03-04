@@ -155,9 +155,30 @@ namespace ScooterInfrastructure.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // GET: Riders/Discounts/5
+        public async Task<IActionResult> Discounts(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .Include(r => r.Discounts) // Завантажуємо знижки
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            return View(rider);
+        }
+
         private bool RiderExists(int id)
         {
             return _context.Riders.Any(e => e.Id == id);
         }
+
     }
 }

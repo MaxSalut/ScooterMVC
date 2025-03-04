@@ -1,0 +1,50 @@
+﻿@model ScooterDomain.Model.ChargingStation
+
+@{
+    ViewData["Title"] = "Додати станцію";
+}
+
+<h1>Додати станцію</h1>
+
+<h4>Станція</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Назва</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Location" class="control-label">Розташування</label>
+                <input asp-for="Location" class="form-control" />
+                <span asp-validation-for="Location" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ChargingSlots" class="control-label">Кількість слотів</label>
+                <input asp-for="ChargingSlots" class="form-control" />
+                <span asp-validation-for="ChargingSlots" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentScooterCount" class="control-label">Поточна кількість скутерів</label>
+                <input asp-for="CurrentScooterCount" class="form-control" />
+                <span asp-validation-for="CurrentScooterCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

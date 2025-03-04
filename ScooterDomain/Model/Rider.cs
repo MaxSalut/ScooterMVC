@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations; // Додаємо для валідації та відображення
+using System.ComponentModel.DataAnnotations;
 
 namespace ScooterDomain.Model;
 
@@ -31,9 +31,6 @@ public partial class Rider : Entity
     [Range(0, double.MaxValue, ErrorMessage = "Баланс не може бути від'ємним")]
     public decimal? AccountBalance { get; set; }
 
-    [Display(Name = "Оренди")]
     public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
-
-    [Display(Name = "Знижки")]
     public virtual ICollection<Discount> Discounts { get; set; } = new List<Discount>();
 }

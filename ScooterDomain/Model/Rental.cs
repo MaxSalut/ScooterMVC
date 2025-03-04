@@ -6,19 +6,19 @@ namespace ScooterDomain.Model;
 
 public partial class Rental : Entity
 {
-    [Required(ErrorMessage = "Поле \"Райдер\" обов'язкове")]
-    [Display(Name = "Райдер")]
+    [Required(ErrorMessage = "Поле \"Користувач\" обов'язкове для заповнення")]
+    [Display(Name = "Користувач")]
     public int RiderId { get; set; }
 
-    [Required(ErrorMessage = "Поле \"Скутер\" обов'язкове")]
+    [Required(ErrorMessage = "Поле \"Скутер\" обов'язкове для заповнення")]
     [Display(Name = "Скутер")]
     public int ScooterId { get; set; }
 
-    [Required(ErrorMessage = "Поле \"Статус\" обов'язкове")]
+    [Required(ErrorMessage = "Поле \"Статус\" обов'язкове для заповнення")]
     [Display(Name = "Статус")]
     public int StatusId { get; set; }
 
-    [Required(ErrorMessage = "Поле \"Час початку\" обов'язкове")]
+    [Required(ErrorMessage = "Поле \"Час початку\" обов'язкове для заповнення")]
     [Display(Name = "Час початку")]
     [DataType(DataType.DateTime, ErrorMessage = "Введіть коректну дату та час")]
     public DateTime StartTime { get; set; }
@@ -27,7 +27,7 @@ public partial class Rental : Entity
     [DataType(DataType.DateTime, ErrorMessage = "Введіть коректну дату та час")]
     public DateTime? EndTime { get; set; }
 
-    [Required(ErrorMessage = "Поле \"Загальна вартість\" обов'язкове")]
+    [Required(ErrorMessage = "Поле \"Загальна вартість\" обов'язкове для заповнення")]
     [Display(Name = "Загальна вартість")]
     [Range(0, double.MaxValue, ErrorMessage = "Вартість не може бути від'ємною")]
     public decimal TotalCost { get; set; }
@@ -44,10 +44,7 @@ public partial class Rental : Entity
     public int? PaymentMethodId { get; set; }
 
     public virtual PaymentMethod? PaymentMethod { get; set; }
-
     public virtual Rider Rider { get; set; } = null!;
-
     public virtual Scooter Scooter { get; set; } = null!;
-
     public virtual RentalStatus Status { get; set; } = null!;
 }

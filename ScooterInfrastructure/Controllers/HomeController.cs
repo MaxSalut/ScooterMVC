@@ -1,31 +1,31 @@
-using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using ScooterInfrastructure.Models;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
 
-namespace ScooterInfrastructure.Controllers;
-
-public class HomeController : Controller
+namespace ScooterInfrastructure.Controllers
 {
-    private readonly ILogger<HomeController> _logger;
-
-    public HomeController(ILogger<HomeController> logger)
+    public class HomeController : Controller
     {
-        _logger = logger;
-    }
+        private readonly ScootersContext _context;
 
-    public IActionResult Index()
-    {
-        return View();
-    }
+        public HomeController(ScootersContext context)
+        {
+            _context = context;
+        }
 
-    public IActionResult Privacy()
-    {
-        return View();
-    }
+        public IActionResult Index()
+        {
+            // Статистика для головної сторінки
+            ViewBag.AvailableScooters = _context.Scooters.Count(s => s.Status.Name == "Доступний");
+            ViewBag.ChargingStationsCount = _context.ChargingStations.Count();
+            ViewBag.ActiveRentals = _context.Rentals.Count(r => r.StatusId == 1);
 
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
-    {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+            return View();
+        }
+
+        public IActionResult Privacy()
+        {
+            return View();
+        }
     }
 }

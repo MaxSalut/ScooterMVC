@@ -61,12 +61,52 @@ namespace ScooterInfrastructure.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Model,BatteryLevel,StatusId,CurrentLocation,StationId,Id")] Scooter scooter)
         {
+            ModelState.Remove("Station"); 
+            ModelState.Remove("Status"); 
             if (ModelState.IsValid)
             {
-                _context.Add(scooter);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                // Ensure StatusId is valid and fetch the corresponding ScooterStatus
+                var status = await _context.ScooterStatuses.FindAsync(scooter.StatusId);
+                if (status == null)
+                {
+                    ModelState.AddModelError("StatusId", "Invalid StatusId. No corresponding ScooterStatus found.");
+                }
+                else
+                {
+                    scooter.Status = status;
+                }
+
+                // Ensure StationId is valid and fetch the corresponding ChargingStation
+                if (scooter.StationId.HasValue)
+                {
+                    var station = await _context.ChargingStations.FindAsync(scooter.StationId);
+                    if (station == null)
+                    {
+                        ModelState.AddModelError("StationId", "Invalid StationId. No corresponding ChargingStation found.");
+                    }
+                    else
+                    {
+                        scooter.Station = station;
+                    }
+                }
+
+                if (ModelState.IsValid)
+                {
+                    _context.Add(scooter);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
             }
+
+            // Log or inspect validation errors
+            foreach (var state in ModelState)
+            {
+                foreach (var error in state.Value.Errors)
+                {
+                    Console.WriteLine($"Property: {state.Key}, Error: {error.ErrorMessage}");
+                }
+            }
+
             ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location", scooter.StationId);
             ViewData["StatusId"] = new SelectList(_context.ScooterStatuses, "Id", "Name", scooter.StatusId);
             return View(scooter);
@@ -101,7 +141,8 @@ namespace ScooterInfrastructure.Controllers
             {
                 return NotFound();
             }
-
+            ModelState.Remove("Station");
+            ModelState.Remove("Status");
             if (ModelState.IsValid)
             {
                 try

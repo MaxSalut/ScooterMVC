@@ -1,0 +1,38 @@
+﻿@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Знижки користувача";
+}
+
+<h1>Знижки для @Model.FirstName @Model.LastName</h1>
+
+@if (Model.Discounts.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Відсоток</th>
+                <th>Опис</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var discount in Model.Discounts)
+            {
+                <tr>
+                    <td>@discount.Name</td>
+                    <td>@discount.Percentage%</td>
+                    <td>@discount.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">У цього користувача немає активних знижок.</div>
+}
+
+<div>
+    <a asp-action="Details" asp-route-id="@Model.Id">Назад до профілю</a>
+</div>

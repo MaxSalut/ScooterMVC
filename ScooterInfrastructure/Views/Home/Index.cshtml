@@ -1,8 +1,120 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Головна";
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Ласкаво просимо до сервісу оренди скутерів!</h1>
+    <p class="lead">Орендуйте скутери швидко, зручно та безпечно.</p>
+</div>
+
+<!-- Статистика -->
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Доступні скутери</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.AvailableScooters</h5>
+                <p class="card-text">Скутери готові до оренди.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Станції зарядки</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.ChargingStationsCount</h5>
+                <p class="card-text">Станцій доступно для зарядки.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Активні оренди</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.ActiveRentals</h5>
+                <p class="card-text">Оренд активних зараз.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Швидкий доступ -->
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Переглянути скутери</h5>
+                <p class="card-text">Ознайомтеся з нашим парком скутерів.</p>
+                <a asp-controller="Scooters" asp-action="Index" class="btn btn-primary">Переглянути</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Орендувати скутер</h5>
+                <p class="card-text">Швидко та зручно орендуйте скутер.</p>
+                <a asp-controller="Rentals" asp-action="Create" class="btn btn-success">Орендувати</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Станції зарядки</h5>
+                <p class="card-text">Знайдіть найближчу станцію зарядки.</p>
+                <a asp-controller="ChargingStations" asp-action="Index" class="btn btn-info">Переглянути</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Відгуки -->
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Відгуки наших клієнтів</h2>
+        <div id="reviewsCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <blockquote class="blockquote">
+                        <p>Чудовий сервіс! Скутери завжди в хорошому стані, орендувати дуже зручно.</p>
+                        <footer class="blockquote-footer">Іван Петренко</footer>
+                    </blockquote>
+                </div>
+                <div class="carousel-item">
+                    <blockquote class="blockquote">
+                        <p>Дуже сподобалася швидкість обслуговування. Рекомендую!</p>
+                        <footer class="blockquote-footer">Олена Сидорова</footer>
+                    </blockquote>
+                </div>
+                <div class="carousel-item">
+                    <blockquote class="blockquote">
+                        <p>Зручний додаток, завжди знаходжу скутер поруч.</p>
+                        <footer class="blockquote-footer">Андрій Коваленко</footer>
+                    </blockquote>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#reviewsCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Попередній</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#reviewsCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Наступний</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Контактна інформація -->
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Контакти</h2>
+        <p>Якщо у вас виникли питання, зв'яжіться з нами:</p>
+        <ul>
+            <li>Телефон: +380 123 456 789</li>
+            <li>Email: support@scooter-rental.com</li>
+            <li>Адреса: м. Київ, вул. Скутерна, 10</li>
+        </ul>
+    </div>
 </div>
