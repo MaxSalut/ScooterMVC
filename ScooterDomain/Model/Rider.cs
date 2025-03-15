@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ScooterDomain.Model;
 
-public partial class Rider : Entity
+public partial class Rider : Entity, IValidatableObject
 {
     [Required(ErrorMessage = "Поле \"Ім'я\" обов'язкове для заповнення")]
     [Display(Name = "Ім'я")]
@@ -33,4 +33,28 @@ public partial class Rider : Entity
 
     public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
     public virtual ICollection<Discount> Discounts { get; set; } = new List<Discount>();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Визначаємо мінімальну допустиму дату (наприклад, 01.01.2000)
+        var minDate = new DateOnly(2000, 1, 1);
+        // Поточна дата (на момент валідації)
+        var maxDate = DateOnly.FromDateTime(DateTime.Now);
+
+        // Перевірка, чи дата не занадто в минулому
+        if (RegistrationDate < minDate)
+        {
+            yield return new ValidationResult(
+                $"Дата реєстрації не може бути раніше {minDate:dd.MM.yyyy}.",
+                new[] { nameof(RegistrationDate) });
+        }
+
+        // Перевірка, чи дата не в майбутньому
+        if (RegistrationDate > maxDate)
+        {
+            yield return new ValidationResult(
+                "Дата реєстрації не може бути в майбутньому.",
+                new[] { nameof(RegistrationDate) });
+        }
+    }
 }

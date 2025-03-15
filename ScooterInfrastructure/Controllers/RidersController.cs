@@ -40,7 +40,6 @@ namespace ScooterInfrastructure.Controllers
                 return NotFound();
             }
 
-            //return View(rider);
             return RedirectToAction("Index", "Rentals", new
             {
                 id = rider.Id,
@@ -56,8 +55,6 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Riders/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("FirstName,LastName,PhoneNumber,RegistrationDate,AccountBalance,Id")] Rider rider)
@@ -88,8 +85,6 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Riders/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("FirstName,LastName,PhoneNumber,RegistrationDate,AccountBalance,Id")] Rider rider)
@@ -175,10 +170,91 @@ namespace ScooterInfrastructure.Controllers
             return View(rider);
         }
 
+        // GET: Riders/ManageDiscounts/5
+        public async Task<IActionResult> ManageDiscounts(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .Include(r => r.Discounts) // Завантажуємо поточні знижки користувача
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            // Отримуємо всі доступні знижки
+            var allDiscounts = await _context.Discounts.ToListAsync();
+            // Фільтруємо, щоб показати лише ті, яких ще немає у користувача
+            var availableDiscounts = allDiscounts.Where(d => !rider.Discounts.Any(rd => rd.Id == d.Id)).ToList();
+
+            ViewBag.AvailableDiscounts = new SelectList(availableDiscounts, "Id", "Name"); // Для dropdown у формі
+            return View(rider);
+        }
+
+        // POST: Riders/ManageDiscounts/5 (Додавання знижки)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManageDiscounts(int id, int discountId)
+        {
+            var rider = await _context.Riders
+                .Include(r => r.Discounts)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            var discount = await _context.Discounts.FindAsync(discountId);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            // Перевіряємо, чи знижка вже додана
+            if (!rider.Discounts.Any(d => d.Id == discountId))
+            {
+                rider.Discounts.Add(discount);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(ManageDiscounts), new { id });
+        }
+
+        // POST: Riders/RemoveDiscount/5 (Видалення знижки)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveDiscount(int id, int discountId)
+        {
+            var rider = await _context.Riders
+                .Include(r => r.Discounts)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            var discount = rider.Discounts.FirstOrDefault(d => d.Id == discountId);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            rider.Discounts.Remove(discount);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(ManageDiscounts), new { id });
+        }
+
         private bool RiderExists(int id)
         {
             return _context.Riders.Any(e => e.Id == id);
         }
-
     }
 }

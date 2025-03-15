@@ -35,7 +35,7 @@
             </div>
             <div class="form-group">
                 <label asp-for="AccountBalance" class="control-label">Баланс рахунку</label>
-                <input asp-for="AccountBalance" class="form-control" />
+                <input asp-for="AccountBalance" class="form-control" type="number" step="0.01" />
                 <span asp-validation-for="AccountBalance" class="text-danger"></span>
             </div>
             <div class="form-group">

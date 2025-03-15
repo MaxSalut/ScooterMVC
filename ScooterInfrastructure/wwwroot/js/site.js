@@ -1,4 +1,10 @@
-﻿// Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿$(document).ready(function () {
+    // Перевизначаємо метод валідації чисел
+    $.validator.methods.number = function (value, element) {
+        // Дозволяємо як кому, так і крапку як роздільник
+        return this.optional(element) || !isNaN(parseFloat(value.replace(',', '.')));
+    };
 
-// Write your JavaScript code.
+    // Оновлюємо правила валідації для всіх форм
+    $.validator.unobtrusive.parse();
+});

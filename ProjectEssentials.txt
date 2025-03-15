@@ -1,0 +1,3399 @@
+# ScooterDomain Project
+==================================================
+// ==== ScooterDomain.csproj ====
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.2" />
+  </ItemGroup>
+
+</Project>
+
+
+// ==== Model\ChargingStation.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class ChargingStation : Entity
+{
+    [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
+    [Display(Name = "Назва")]
+    [StringLength(100, ErrorMessage = "Назва не може бути довшою за 100 символів")]
+    public string Name { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Розташування\" обов'язкове для заповнення")]
+    [Display(Name = "Розташування")]
+    [StringLength(255, ErrorMessage = "Розташування не може бути довшим за 255 символів")]
+    public string Location { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Кількість слотів\" обов'язкове для заповнення")]
+    [Display(Name = "Кількість слотів")]
+    [Range(1, int.MaxValue, ErrorMessage = "Кількість слотів має бути більшою за 0")]
+    public int ChargingSlots { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Поточна кількість скутерів\" обов'язкове для заповнення")]
+    [Display(Name = "Поточна кількість скутерів")]
+    [Range(0, int.MaxValue, ErrorMessage = "Кількість скутерів не може бути від'ємною")]
+    public int CurrentScooterCount { get; set; }
+
+    public virtual ICollection<Scooter> Scooters { get; set; } = new List<Scooter>();
+}
+
+// ==== Model\Discount.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class Discount : Entity
+{
+    [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
+    [Display(Name = "Назва")]
+    [StringLength(100, ErrorMessage = "Назва не може бути довшою за 100 символів")]
+    public string Name { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Відсоток знижки\" обов'язкове для заповнення")]
+    [Display(Name = "Відсоток знижки")]
+    [Range(0, 100, ErrorMessage = "Відсоток знижки має бути від 0 до 100")]
+    public decimal Percentage { get; set; }
+
+    [Display(Name = "Опис")]
+    public string? Description { get; set; }
+
+    public virtual ICollection<Rider> Riders { get; set; } = new List<Rider>();
+}
+
+// ==== Model\Entity.cs ====
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ScooterDomain.Model
+{
+    public abstract class Entity
+    {
+        public int Id { get; set; }
+    }
+}
+
+// ==== Model\PaymentMethod.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class PaymentMethod : Entity
+{
+    [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
+    [Display(Name = "Назва")]
+    [StringLength(100, ErrorMessage = "Назва не може бути довшою за 100 символів")]
+    public string Name { get; set; } = null!;
+
+    public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
+}
+
+// ==== Model\Rental.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class Rental : Entity, IValidatableObject
+{
+    [Required(ErrorMessage = "Поле \"Користувач\" обов'язкове для заповнення")]
+    [Display(Name = "Користувач")]
+    public int RiderId { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Скутер\" обов'язкове для заповнення")]
+    [Display(Name = "Скутер")]
+    public int ScooterId { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Статус\" обов'язкове для заповнення")]
+    [Display(Name = "Статус")]
+    public int StatusId { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Час початку\" обов'язкове для заповнення")]
+    [Display(Name = "Час початку")]
+    [DataType(DataType.DateTime, ErrorMessage = "Введіть коректну дату та час")]
+    public DateTime StartTime { get; set; }
+
+    [Display(Name = "Час завершення")]
+    [DataType(DataType.DateTime, ErrorMessage = "Введіть коректну дату та час")]
+    public DateTime? EndTime { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Загальна вартість\" обов'язкове для заповнення")]
+    [Display(Name = "Загальна вартість")]
+    [Range(0, double.MaxValue, ErrorMessage = "Вартість не може бути від'ємною")]
+    public decimal TotalCost { get; set; }
+
+    [Display(Name = "Дата оплати")]
+    [DataType(DataType.DateTime, ErrorMessage = "Введіть коректну дату та час")]
+    public DateTime? PaymentDate { get; set; }
+
+    [Display(Name = "Сума оплати")]
+    [Range(0, double.MaxValue, ErrorMessage = "Сума не може бути від'ємною")]
+    public decimal? Amount { get; set; }
+
+    [Display(Name = "Спосіб оплати")]
+    public int? PaymentMethodId { get; set; }
+
+    public virtual PaymentMethod? PaymentMethod { get; set; }
+    public virtual Rider Rider { get; set; } = null!;
+    public virtual Scooter Scooter { get; set; } = null!;
+    public virtual RentalStatus Status { get; set; } = null!;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Статуси з RentalStatuses: 1 - Активна, 2 - Завершена, 3 - Скасована
+        const int ActiveStatusId = 1;
+        const int CompletedStatusId = 2;
+        const int CancelledStatusId = 3;
+
+        // Перевірка часу завершення
+        if (EndTime.HasValue && EndTime <= StartTime)
+        {
+            yield return new ValidationResult(
+                "Час завершення не може бути меншим або дорівнювати часу початку.",
+                new[] { nameof(EndTime) });
+        }
+
+        if (StatusId == ActiveStatusId)
+        {
+            // Для статусу "Активна"
+            if (EndTime.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Час завершення має бути відсутнім для активної оренди.",
+                    new[] { nameof(EndTime) });
+            }
+
+            if (PaymentDate.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Дата оплати має бути відсутньою для активної оренди.",
+                    new[] { nameof(PaymentDate) });
+            }
+
+            if (Amount.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Сума оплати має бути відсутньою для активної оренди.",
+                    new[] { nameof(Amount) });
+            }
+
+            if (PaymentMethodId.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Спосіб оплати має бути відсутнім для активної оренди.",
+                    new[] { nameof(PaymentMethodId) });
+            }
+        }
+        else if (StatusId == CompletedStatusId)
+        {
+            // Для статусу "Завершена"
+            if (!EndTime.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Час завершення обов'язковий для завершеної оренди.",
+                    new[] { nameof(EndTime) });
+            }
+
+            if (!PaymentDate.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Дата оплати обов'язкова для завершеної оренди.",
+                    new[] { nameof(PaymentDate) });
+            }
+
+            if (!Amount.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Сума оплати обов'язкова для завершеної оренди.",
+                    new[] { nameof(Amount) });
+            }
+
+            if (!PaymentMethodId.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Спосіб оплати обов'язковий для завершеної оренди.",
+                    new[] { nameof(PaymentMethodId) });
+            }
+
+            if (Amount.HasValue && Amount != TotalCost)
+            {
+                yield return new ValidationResult(
+                    "Сума оплати має дорівнювати загальній вартості для завершеної оренди.",
+                    new[] { nameof(Amount) });
+            }
+
+            if (TotalCost <= 0)
+            {
+                yield return new ValidationResult(
+                    "Загальна вартість має бути більшою за 0 для завершеної оренди.",
+                    new[] { nameof(TotalCost) });
+            }
+        }
+        else if (StatusId == CancelledStatusId)
+        {
+            // Для статусу "Скасована"
+            if (!EndTime.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Час завершення обов'язковий для скасованої оренди.",
+                    new[] { nameof(EndTime) });
+            }
+
+            if (PaymentDate.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Дата оплати має бути відсутньою для скасованої оренди.",
+                    new[] { nameof(PaymentDate) });
+            }
+
+            if (Amount.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Сума оплати має бути відсутньою для скасованої оренди.",
+                    new[] { nameof(Amount) });
+            }
+
+            if (PaymentMethodId.HasValue)
+            {
+                yield return new ValidationResult(
+                    "Спосіб оплати має бути відсутнім для скасованої оренди.",
+                    new[] { nameof(PaymentMethodId) });
+            }
+        }
+        else
+        {
+            yield return new ValidationResult(
+                "Невірний статус оренди. Допустимі значення: Активна (1), Завершена (2), Скасована (3).",
+                new[] { nameof(StatusId) });
+        }
+    }
+}
+
+// ==== Model\RentalStatus.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class RentalStatus : Entity
+{
+    [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
+    [Display(Name = "Назва")]
+    [StringLength(100, ErrorMessage = "Назва не може бути довшою за 100 символів")]
+    public string Name { get; set; } = null!;
+
+    public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
+}
+
+// ==== Model\Rider.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class Rider : Entity, IValidatableObject
+{
+    [Required(ErrorMessage = "Поле \"Ім'я\" обов'язкове для заповнення")]
+    [Display(Name = "Ім'я")]
+    [StringLength(50, MinimumLength = 2, ErrorMessage = "Ім'я має бути від 2 до 50 символів")]
+    public string FirstName { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Прізвище\" обов'язкове для заповнення")]
+    [Display(Name = "Прізвище")]
+    [StringLength(50, MinimumLength = 2, ErrorMessage = "Прізвище має бути від 2 до 50 символів")]
+    public string LastName { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Номер телефону\" обов'язкове для заповнення")]
+    [Display(Name = "Номер телефону")]
+    [Phone(ErrorMessage = "Введіть коректний номер телефону")]
+    [RegularExpression(@"^\+?[1-9]\d{9,14}$", ErrorMessage = "Номер телефону має бути у форматі +380xxxxxxxxx")]
+    public string PhoneNumber { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Дата реєстрації\" обов'язкове для заповнення")]
+    [Display(Name = "Дата реєстрації")]
+    [DataType(DataType.Date, ErrorMessage = "Введіть коректну дату")]
+    public DateOnly RegistrationDate { get; set; }
+
+    [Display(Name = "Баланс рахунку")]
+    [Range(0, double.MaxValue, ErrorMessage = "Баланс не може бути від'ємним")]
+    public decimal? AccountBalance { get; set; }
+
+    public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
+    public virtual ICollection<Discount> Discounts { get; set; } = new List<Discount>();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // Визначаємо мінімальну допустиму дату (наприклад, 01.01.2000)
+        var minDate = new DateOnly(2000, 1, 1);
+        // Поточна дата (на момент валідації)
+        var maxDate = DateOnly.FromDateTime(DateTime.Now);
+
+        // Перевірка, чи дата не занадто в минулому
+        if (RegistrationDate < minDate)
+        {
+            yield return new ValidationResult(
+                $"Дата реєстрації не може бути раніше {minDate:dd.MM.yyyy}.",
+                new[] { nameof(RegistrationDate) });
+        }
+
+        // Перевірка, чи дата не в майбутньому
+        if (RegistrationDate > maxDate)
+        {
+            yield return new ValidationResult(
+                "Дата реєстрації не може бути в майбутньому.",
+                new[] { nameof(RegistrationDate) });
+        }
+    }
+}
+
+// ==== Model\Scooter.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class Scooter : Entity
+{
+    [Required(ErrorMessage = "Поле \"Модель\" обов'язкове для заповнення")]
+    [Display(Name = "Модель")]
+    [StringLength(100, ErrorMessage = "Модель не може бути довшою за 100 символів")]
+    public string Model { get; set; } = null!;
+
+    [Required(ErrorMessage = "Поле \"Рівень батареї\" обов'язкове для заповнення")]
+    [Display(Name = "Рівень батареї")]
+    [Range(0, 100, ErrorMessage = "Рівень батареї повинен бути від 0 до 100")]
+    public int BatteryLevel { get; set; }
+
+    [Required(ErrorMessage = "Поле \"Статус\" обов'язкове для заповнення")]
+    [Display(Name = "Статус")]
+    public int StatusId { get; set; }
+
+    [Display(Name = "Поточне розташування")]
+    [StringLength(255, ErrorMessage = "Розташування не може бути довшим за 255 символів")]
+    public string? CurrentLocation { get; set; }
+
+    [Display(Name = "Станція")]
+    public int? StationId { get; set; }
+
+    public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
+    public virtual ChargingStation? Station { get; set; }
+    public virtual ScooterStatus Status { get; set; } = null!;
+}
+
+// ==== Model\ScooterStatus.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace ScooterDomain.Model;
+
+public partial class ScooterStatus : Entity
+{
+    [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
+    [Display(Name = "Назва")]
+    [StringLength(100, ErrorMessage = "Назва не може бути довшою за 100 символів")]
+    public string Name { get; set; } = null!;
+
+    public virtual ICollection<Scooter> Scooters { get; set; } = new List<Scooter>();
+}
+
+# ScooterInfrastructure Project
+==================================================
+// ==== appsettings.json ====
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server= DESKTOP-4H0AUGU\\SQLEXPRESS; Database=Scooters; Trusted_Connection=True; MultipleActiveResultSets=true"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+
+// ==== Program.cs ====
+using ScooterInfrastructure;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Localization;
+using System.Globalization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ������ ����������
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[]
+    {
+        new CultureInfo("uk-UA"), // ��������� �������� (���� �� ���������)
+        new CultureInfo("en-US")  // ��������� �������� (������ �� ���������)
+    };
+    options.DefaultRequestCulture = new RequestCulture("uk-UA");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
+
+// ������ ������
+builder.Services.AddControllersWithViews();
+builder.Services.AddDbContext<ScootersContext>(option => option.UseSqlServer(
+    builder.Configuration.GetConnectionString("DefaultConnection")
+));
+
+var app = builder.Build();
+
+// ������� middleware ����������
+app.UseRequestLocalization();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseAuthorization();
+app.MapStaticAssets();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
+
+app.Run();
+
+// ==== Controllers\ChargingStationsController.cs ====
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class ChargingStationsController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public ChargingStationsController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        // GET: ChargingStations
+        public async Task<IActionResult> Index()
+        {
+            return View(await _context.ChargingStations.ToListAsync());
+        }
+
+        // GET: ChargingStations/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var chargingStation = await _context.ChargingStations
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (chargingStation == null)
+            {
+                return NotFound();
+            }
+
+            return View(chargingStation);
+        }
+
+        // GET: ChargingStations/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: ChargingStations/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Name,Location,ChargingSlots,CurrentScooterCount,Id")] ChargingStation chargingStation)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(chargingStation);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(chargingStation);
+        }
+
+        // GET: ChargingStations/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var chargingStation = await _context.ChargingStations.FindAsync(id);
+            if (chargingStation == null)
+            {
+                return NotFound();
+            }
+            return View(chargingStation);
+        }
+
+        // POST: ChargingStations/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Name,Location,ChargingSlots,CurrentScooterCount,Id")] ChargingStation chargingStation)
+        {
+            if (id != chargingStation.Id)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(chargingStation);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!ChargingStationExists(chargingStation.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(chargingStation);
+        }
+
+        // GET: ChargingStations/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var chargingStation = await _context.ChargingStations
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (chargingStation == null)
+            {
+                return NotFound();
+            }
+
+            return View(chargingStation);
+        }
+
+        // POST: ChargingStations/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var chargingStation = await _context.ChargingStations.FindAsync(id);
+            if (chargingStation != null)
+            {
+                _context.ChargingStations.Remove(chargingStation);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool ChargingStationExists(int id)
+        {
+            return _context.ChargingStations.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+// ==== Controllers\DiscountsController.cs ====
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class DiscountsController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public DiscountsController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Discounts
+        public async Task<IActionResult> Index()
+        {
+            return View(await _context.Discounts.ToListAsync());
+        }
+
+        // GET: Discounts/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var discount = await _context.Discounts
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            return View(discount);
+        }
+
+        // GET: Discounts/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Discounts/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Name,Percentage,Description,Id")] Discount discount)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(discount);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(discount);
+        }
+
+        // GET: Discounts/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var discount = await _context.Discounts.FindAsync(id);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+            return View(discount);
+        }
+
+        // POST: Discounts/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Name,Percentage,Description,Id")] Discount discount)
+        {
+            if (id != discount.Id)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(discount);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!DiscountExists(discount.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(discount);
+        }
+
+        // GET: Discounts/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var discount = await _context.Discounts
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            return View(discount);
+        }
+
+        // POST: Discounts/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var discount = await _context.Discounts.FindAsync(id);
+            if (discount != null)
+            {
+                _context.Discounts.Remove(discount);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool DiscountExists(int id)
+        {
+            return _context.Discounts.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+// ==== Controllers\HomeController.cs ====
+using Microsoft.AspNetCore.Mvc;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class HomeController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public HomeController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        public IActionResult Index()
+        {
+            // ���������� ��� ������� �������
+            ViewBag.AvailableScooters = _context.Scooters.Count(s => s.Status.Name == "���������");
+            ViewBag.ChargingStationsCount = _context.ChargingStations.Count();
+            ViewBag.ActiveRentals = _context.Rentals.Count(r => r.StatusId == 1);
+
+            return View();
+        }
+
+        public IActionResult Privacy()
+        {
+            return View();
+        }
+    }
+}
+
+// ==== Controllers\RentalsController.cs ====
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class RentalsController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public RentalsController(ScootersContext context)
+        {
+            _context = context; 
+        }
+        
+        // GET: Rentals
+        public async Task<IActionResult> Index(int? id, string firstName, string lastName)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var scootersContext = _context.Rentals
+                .Include(r => r.PaymentMethod)
+                .Include(r => r.Rider)
+                .Include(r => r.Scooter)
+                .Include(r => r.Status)
+                .Where(r => r.RiderId == id);
+
+            ViewBag.RiderId = id; // Додаємо для передачі в Create
+            ViewBag.FirstName = firstName;
+            ViewBag.LastName = lastName;
+
+            return View(await scootersContext.ToListAsync());
+        }
+
+        // GET: Rentals/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rental = await _context.Rentals
+                .Include(r => r.PaymentMethod)
+                .Include(r => r.Rider)
+                .Include(r => r.Scooter)
+                .Include(r => r.Status)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (rental == null)
+            {
+                return NotFound();
+            }
+
+            return View(rental);
+        }
+
+        // GET: Rentals/Create
+        public IActionResult Create()
+        {
+            ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name");
+            ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName");
+            ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model");
+            ViewData["StatusId"] = new SelectList(_context.RentalStatuses, "Id", "Name");
+            return View();
+        }
+
+        // POST: Rentals/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+[ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("RiderId,ScooterId,StatusId,StartTime,EndTime,TotalCost,PaymentDate,Amount,PaymentMethodId,Id")] Rental rental)
+        {
+            if (rental == null)
+            {
+                return BadRequest("Модель оренди не може бути null.");
+            }
+
+            ModelState.Remove("PaymentMethod");
+            ModelState.Remove("Rider");
+            ModelState.Remove("Scooter");
+            ModelState.Remove("Status");
+
+            // Явна валідація моделі
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(rental);
+            if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
+            {
+                foreach (var error in validationResults)
+                {
+                    ModelState.AddModelError(error.MemberNames.First(), error.ErrorMessage);
+                }
+            }
+
+            if (ModelState.IsValid)
+            {
+                _context.Add(rental);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index), new { id = rental.RiderId, firstName = ViewBag.FirstName, lastName = ViewBag.LastName });
+            }
+
+            ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name", rental.PaymentMethodId);
+            ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName", rental.RiderId);
+            ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model", rental.ScooterId);
+            ViewData["StatusId"] = new SelectList(_context.RentalStatuses, "Id", "Name", rental.StatusId);
+            return View(rental);
+        }
+
+        // GET: Rentals/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rental = await _context.Rentals.FindAsync(id);
+            if (rental == null)
+            {
+                return NotFound();
+            }
+            ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name", rental.PaymentMethodId);
+            ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName", rental.RiderId);
+            ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model", rental.ScooterId);
+            ViewData["StatusId"] = new SelectList(_context.RentalStatuses, "Id", "Name", rental.StatusId);
+            return View(rental);
+        }
+
+        // POST: Rentals/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("RiderId,ScooterId,StatusId,StartTime,EndTime,TotalCost,PaymentDate,Amount,PaymentMethodId,Id")] Rental rental)
+        {
+            if (id != rental.Id)
+            {
+                return NotFound();
+            }
+
+            ModelState.Remove("PaymentMethod");
+            ModelState.Remove("Rider");
+            ModelState.Remove("Scooter");
+            ModelState.Remove("Status");
+
+            // Явна валідація моделі
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(rental);
+            if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
+            {
+                foreach (var error in validationResults)
+                {
+                    ModelState.AddModelError(error.MemberNames.First(), error.ErrorMessage);
+                }
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(rental);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!RentalExists(rental.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index), new { id = rental.RiderId, firstName = ViewBag.FirstName, lastName = ViewBag.LastName });
+            }
+
+            ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name", rental.PaymentMethodId);
+            ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName", rental.RiderId);
+            ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model", rental.ScooterId);
+            ViewData["StatusId"] = new SelectList(_context.RentalStatuses, "Id", "Name", rental.StatusId);
+            return View(rental);
+        }
+
+        // GET: Rentals/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rental = await _context.Rentals
+                .Include(r => r.PaymentMethod)
+                .Include(r => r.Rider)
+                .Include(r => r.Scooter)
+                .Include(r => r.Status)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (rental == null)
+            {
+                return NotFound();
+            }
+
+            return View(rental);
+        }
+
+        // POST: Rentals/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var rental = await _context.Rentals.FindAsync(id);
+            if (rental != null)
+            {
+                _context.Rentals.Remove(rental);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool RentalExists(int id)
+        {
+            return _context.Rentals.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+// ==== Controllers\RidersController.cs ====
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class RidersController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public RidersController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Riders
+        public async Task<IActionResult> Index()
+        {
+            return View(await _context.Riders.ToListAsync());
+        }
+
+        // GET: Riders/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            return RedirectToAction("Index", "Rentals", new
+            {
+                id = rider.Id,
+                firstName = rider.FirstName,
+                lastName = rider.LastName
+            });
+        }
+
+        // GET: Riders/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Riders/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("FirstName,LastName,PhoneNumber,RegistrationDate,AccountBalance,Id")] Rider rider)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Add(rider);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(rider);
+        }
+
+        // GET: Riders/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders.FindAsync(id);
+            if (rider == null)
+            {
+                return NotFound();
+            }
+            return View(rider);
+        }
+
+        // POST: Riders/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("FirstName,LastName,PhoneNumber,RegistrationDate,AccountBalance,Id")] Rider rider)
+        {
+            if (id != rider.Id)
+            {
+                return NotFound();
+            }
+
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(rider);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!RiderExists(rider.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            return View(rider);
+        }
+
+        // GET: Riders/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            return View(rider);
+        }
+
+        // POST: Riders/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var rider = await _context.Riders.FindAsync(id);
+            if (rider != null)
+            {
+                _context.Riders.Remove(rider);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Riders/Discounts/5
+        public async Task<IActionResult> Discounts(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .Include(r => r.Discounts) // Завантажуємо знижки
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            return View(rider);
+        }
+
+        // GET: Riders/ManageDiscounts/5
+        public async Task<IActionResult> ManageDiscounts(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var rider = await _context.Riders
+                .Include(r => r.Discounts) // Завантажуємо поточні знижки користувача
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            // Отримуємо всі доступні знижки
+            var allDiscounts = await _context.Discounts.ToListAsync();
+            // Фільтруємо, щоб показати лише ті, яких ще немає у користувача
+            var availableDiscounts = allDiscounts.Where(d => !rider.Discounts.Any(rd => rd.Id == d.Id)).ToList();
+
+            ViewBag.AvailableDiscounts = new SelectList(availableDiscounts, "Id", "Name"); // Для dropdown у формі
+            return View(rider);
+        }
+
+        // POST: Riders/ManageDiscounts/5 (Додавання знижки)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ManageDiscounts(int id, int discountId)
+        {
+            var rider = await _context.Riders
+                .Include(r => r.Discounts)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            var discount = await _context.Discounts.FindAsync(discountId);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            // Перевіряємо, чи знижка вже додана
+            if (!rider.Discounts.Any(d => d.Id == discountId))
+            {
+                rider.Discounts.Add(discount);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(ManageDiscounts), new { id });
+        }
+
+        // POST: Riders/RemoveDiscount/5 (Видалення знижки)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveDiscount(int id, int discountId)
+        {
+            var rider = await _context.Riders
+                .Include(r => r.Discounts)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (rider == null)
+            {
+                return NotFound();
+            }
+
+            var discount = rider.Discounts.FirstOrDefault(d => d.Id == discountId);
+            if (discount == null)
+            {
+                return NotFound();
+            }
+
+            rider.Discounts.Remove(discount);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(ManageDiscounts), new { id });
+        }
+
+        private bool RiderExists(int id)
+        {
+            return _context.Riders.Any(e => e.Id == id);
+        }
+    }
+}
+
+// ==== Controllers\ScootersController.cs ====
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class ScootersController : Controller
+    {
+        private readonly ScootersContext _context;
+
+        public ScootersController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Scooters
+        public async Task<IActionResult> Index()
+        {
+            var scootersContext = _context.Scooters.Include(s => s.Station).Include(s => s.Status);
+            return View(await scootersContext.ToListAsync());
+        }
+
+        // GET: Scooters/Details/5
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var scooter = await _context.Scooters
+                .Include(s => s.Station)
+                .Include(s => s.Status)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (scooter == null)
+            {
+                return NotFound();
+            }
+
+            return View(scooter);
+        }
+
+        // GET: Scooters/Create
+        public IActionResult Create()
+        {
+            ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location");
+            ViewData["StatusId"] = new SelectList(_context.ScooterStatuses, "Id", "Name");
+            return View();
+        }
+
+        // POST: Scooters/Create
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create([Bind("Model,BatteryLevel,StatusId,CurrentLocation,StationId,Id")] Scooter scooter)
+        {
+            ModelState.Remove("Station"); 
+            ModelState.Remove("Status"); 
+            if (ModelState.IsValid)
+            {
+                // Ensure StatusId is valid and fetch the corresponding ScooterStatus
+                var status = await _context.ScooterStatuses.FindAsync(scooter.StatusId);
+                if (status == null)
+                {
+                    ModelState.AddModelError("StatusId", "Invalid StatusId. No corresponding ScooterStatus found.");
+                }
+                else
+                {
+                    scooter.Status = status;
+                }
+
+                // Ensure StationId is valid and fetch the corresponding ChargingStation
+                if (scooter.StationId.HasValue)
+                {
+                    var station = await _context.ChargingStations.FindAsync(scooter.StationId);
+                    if (station == null)
+                    {
+                        ModelState.AddModelError("StationId", "Invalid StationId. No corresponding ChargingStation found.");
+                    }
+                    else
+                    {
+                        scooter.Station = station;
+                    }
+                }
+
+                if (ModelState.IsValid)
+                {
+                    _context.Add(scooter);
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+
+            // Log or inspect validation errors
+            foreach (var state in ModelState)
+            {
+                foreach (var error in state.Value.Errors)
+                {
+                    Console.WriteLine($"Property: {state.Key}, Error: {error.ErrorMessage}");
+                }
+            }
+
+            ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location", scooter.StationId);
+            ViewData["StatusId"] = new SelectList(_context.ScooterStatuses, "Id", "Name", scooter.StatusId);
+            return View(scooter);
+        }
+
+        // GET: Scooters/Edit/5
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var scooter = await _context.Scooters.FindAsync(id);
+            if (scooter == null)
+            {
+                return NotFound();
+            }
+            ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location", scooter.StationId);
+            ViewData["StatusId"] = new SelectList(_context.ScooterStatuses, "Id", "Name", scooter.StatusId);
+            return View(scooter);
+        }
+
+        // POST: Scooters/Edit/5
+        // To protect from overposting attacks, enable the specific properties you want to bind to.
+        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, [Bind("Model,BatteryLevel,StatusId,CurrentLocation,StationId,Id")] Scooter scooter)
+        {
+            if (id != scooter.Id)
+            {
+                return NotFound();
+            }
+            ModelState.Remove("Station");
+            ModelState.Remove("Status");
+            if (ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(scooter);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    if (!ScooterExists(scooter.Id))
+                    {
+                        return NotFound();
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location", scooter.StationId);
+            ViewData["StatusId"] = new SelectList(_context.ScooterStatuses, "Id", "Name", scooter.StatusId);
+            return View(scooter);
+        }
+
+        // GET: Scooters/Delete/5
+        public async Task<IActionResult> Delete(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var scooter = await _context.Scooters
+                .Include(s => s.Station)
+                .Include(s => s.Status)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            if (scooter == null)
+            {
+                return NotFound();
+            }
+
+            return View(scooter);
+        }
+
+        // POST: Scooters/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var scooter = await _context.Scooters.FindAsync(id);
+            if (scooter != null)
+            {
+                _context.Scooters.Remove(scooter);
+            }
+
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
+        }
+
+        private bool ScooterExists(int id)
+        {
+            return _context.Scooters.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+// ==== Models\ErrorViewModel.cs ====
+namespace ScooterInfrastructure.Models
+{
+    public class ErrorViewModel
+    {
+        public string? RequestId { get; set; }
+
+        public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    }
+}
+
+
+// ==== Views\_ViewImports.cshtml ====
+@using ScooterInfrastructure
+@using ScooterInfrastructure.Models
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+
+// ==== Views\_ViewStart.cshtml ====
+@{
+    Layout = "_Layout";
+}
+
+
+// ==== Views\ChargingStations\Create.cshtml ====
+@model ScooterDomain.Model.ChargingStation
+
+@{
+    ViewData["Title"] = "Додати станцію";
+}
+
+<h1>Додати станцію</h1>
+
+<h4>Станція</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Назва</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Location" class="control-label">Розташування</label>
+                <input asp-for="Location" class="form-control" />
+                <span asp-validation-for="Location" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ChargingSlots" class="control-label">Кількість слотів</label>
+                <input asp-for="ChargingSlots" class="form-control" />
+                <span asp-validation-for="ChargingSlots" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentScooterCount" class="control-label">Поточна кількість скутерів</label>
+                <input asp-for="CurrentScooterCount" class="form-control" />
+                <span asp-validation-for="CurrentScooterCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\ChargingStations\Delete.cshtml ====
+@model ScooterDomain.Model.ChargingStation
+
+@{
+    ViewData["Title"] = "Видалити станцію";
+}
+
+<h1>Видалити станцію</h1>
+
+<h3>Ви впевнені, що хочете видалити цю станцію?</h3>
+<div>
+    <h4>Станція</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Location)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Location)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.ChargingSlots)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.ChargingSlots)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CurrentScooterCount)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.CurrentScooterCount)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Видалити" class="btn btn-danger" /> |
+        <a asp-action="Index">Повернутися до списку</a>
+    </form>
+</div>
+
+// ==== Views\ChargingStations\Details.cshtml ====
+@model ScooterDomain.Model.ChargingStation
+
+@{
+    ViewData["Title"] = "Деталі станції";
+}
+
+<h1>Деталі станції</h1>
+
+<div>
+    <h4>Станція</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Location)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Location)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.ChargingSlots)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.ChargingSlots)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CurrentScooterCount)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.CurrentScooterCount)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Редагувати</a> |
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+// ==== Views\ChargingStations\Edit.cshtml ====
+@model ScooterDomain.Model.ChargingStation
+
+@{
+    ViewData["Title"] = "Редагувати станцію";
+}
+
+<h1>Редагувати станцію</h1>
+
+<h4>Станція</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Назва</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Location" class="control-label">Розташування</label>
+                <input asp-for="Location" class="form-control" />
+                <span asp-validation-for="Location" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ChargingSlots" class="control-label">Кількість слотів</label>
+                <input asp-for="ChargingSlots" class="form-control" />
+                <span asp-validation-for="ChargingSlots" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentScooterCount" class="control-label">Поточна кількість скутерів</label>
+                <input asp-for="CurrentScooterCount" class="form-control" />
+                <span asp-validation-for="CurrentScooterCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\ChargingStations\Index.cshtml ====
+@model IEnumerable<ScooterDomain.Model.ChargingStation>
+
+@{
+    ViewData["Title"] = "Станції зарядки";
+}
+
+<h1>Станції зарядки</h1>
+
+<p>
+    <a asp-action="Create">Додати нову станцію</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Location)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ChargingSlots)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CurrentScooterCount)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Location)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ChargingSlots)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.CurrentScooterCount)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+// ==== Views\Discounts\Create.cshtml ====
+@model ScooterDomain.Model.Discount
+
+@{
+    ViewData["Title"] = "Додати знижку";
+}
+
+<h1>Додати знижку</h1>
+
+<h4>Знижка</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Назва</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Percentage" class="control-label">Відсоток знижки</label>
+                <input asp-for="Percentage" class="form-control" type="number" />
+                <span asp-validation-for="Percentage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Description" class="control-label">Опис</label>
+                <input asp-for="Description" class="form-control" />
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Discounts\Delete.cshtml ====
+@model ScooterDomain.Model.Discount
+
+@{
+    ViewData["Title"] = "Видалити знижку";
+}
+
+<h1>Видалити знижку</h1>
+
+<h3>Ви впевнені, що хочете видалити цю знижку?</h3>
+<div>
+    <h4>Знижка</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Percentage)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Percentage)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Description)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Description)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Видалити" class="btn btn-danger" /> |
+        <a asp-action="Index">Повернутися до списку</a>
+    </form>
+</div>
+
+// ==== Views\Discounts\Details.cshtml ====
+@model ScooterDomain.Model.Discount
+
+@{
+    ViewData["Title"] = "Деталі знижки";
+}
+
+<h1>Деталі знижки</h1>
+
+<div>
+    <h4>Знижка</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Name)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Percentage)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Percentage)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Description)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Description)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Редагувати</a> |
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+// ==== Views\Discounts\Edit.cshtml ====
+@model ScooterDomain.Model.Discount
+
+@{
+    ViewData["Title"] = "Редагувати знижку";
+}
+
+<h1>Редагувати знижку</h1>
+
+<h4>Знижка</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="Name" class="control-label">Назва</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Percentage" class="control-label">Відсоток знижки</label>
+                <input asp-for="Percentage" class="form-control" type="number" />
+                <span asp-validation-for="Percentage" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Description" class="control-label">Опис</label>
+                <input asp-for="Description" class="form-control" />
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Discounts\Index.cshtml ====
+@model IEnumerable<ScooterDomain.Model.Discount>
+
+@{
+    ViewData["Title"] = "Знижки";
+}
+
+<h1>Знижки</h1>
+
+<p>
+    <a asp-action="Create">Додати нову знижку</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Percentage)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Description)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Percentage)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Description)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+// ==== Views\Home\Index.cshtml ====
+@{
+    ViewData["Title"] = "Головна";
+}
+
+<div class="text-center animate__animated animate__fadeIn">
+    <h1 class="display-4">Ласкаво просимо до сервісу оренди самокатів!</h1>
+    <p class="lead">Орендуйте самокати швидко, зручно та безпечно.</p>
+</div>
+
+<!-- Статистика -->
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Доступні самокати</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.AvailableScooters</h5>
+                <p class="card-text">Самокати готові до оренди.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Станції зарядки</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.ChargingStationsCount</h5>
+                <p class="card-text">Станцій доступно для зарядки.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-warning mb-3">
+            <div class="card-header">Активні оренди</div>
+            <div class="card-body">
+                <h5 class="card-title">@ViewBag.ActiveRentals</h5>
+                <p class="card-text">Оренд активних зараз.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Швидкий доступ -->
+<div class="row mt-5 text-center">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Переглянути самокати</h5>
+                <p class="card-text">Ознайомтеся з нашим парком самокатів.</p>
+                <a asp-controller="Scooters" asp-action="Index" class="btn btn-primary">Переглянути</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Орендувати самокат</h5>
+                <p class="card-text">Швидко та зручно орендуйте скутер.</p>
+                <a asp-controller="Rentals" asp-action="Create" class="btn btn-primary">Орендувати</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Станції зарядки</h5>
+                <p class="card-text">Знайдіть найближчу станцію зарядки.</p>
+                <a asp-controller="ChargingStations" asp-action="Index" class="btn btn-primary">Переглянути</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Контактна інформація (переміщено вище) -->
+
+<!-- Відгуки -->
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Відгуки наших клієнтів</h2>
+        <div id="reviewsCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="carousel-item active">
+                    <blockquote class="blockquote">
+                        <p>Чудовий сервіс! Самокати завжди в хорошому стані, орендувати дуже зручно.</p>
+                        <footer class="blockquote-footer">Іван Петренко</footer>
+                    </blockquote>
+                </div>
+                <div class="carousel-item">
+                    <blockquote class="blockquote">
+                        <p>Дуже сподобалася швидкість обслуговування. Рекомендую!</p>
+                        <footer class="blockquote-footer">Олена Сидорова</footer>
+                    </blockquote>
+                </div>
+                <div class="carousel-item">
+                    <blockquote class="blockquote">
+                        <p>Зручний додаток, завжди знаходжу самокат поруч.</p>
+                        <footer class="blockquote-footer">Андрій Коваленко</footer>
+                    </blockquote>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#reviewsCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Попередній</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#reviewsCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Наступний</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h2>Контакти</h2>
+        <p>Якщо у вас виникли питання, зв'яжіться з нами:</p>
+        <ul class="list-unstyled">
+            <li><i class="fas fa-phone"></i> Телефон: +380 123 456 789</li>
+            <li><i class="fas fa-envelope"></i> Email: support@scooter-rental.com</li>
+            <li><i class="fas fa-map-marker-alt"></i> Адреса: м. Київ, вул. Скутерна, 10</li>
+        </ul>
+    </div>
+</div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+}
+
+// ==== Views\Home\Privacy.cshtml ====
+@{
+    ViewData["Title"] = "Privacy Policy";
+}
+<h1>@ViewData["Title"]</h1>
+
+<p>Use this page to detail your site's privacy policy.</p>
+
+
+// ==== Views\Rentals\Create.cshtml ====
+@model ScooterDomain.Model.Rental
+
+@{
+    ViewData["Title"] = "Додати оренду";
+}
+
+<h1>Додати оренду</h1>
+
+<h4>Оренда</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="RiderId" class="control-label">Користувач</label>
+                <select asp-for="RiderId" class="form-control" asp-items="ViewBag.RiderId"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="ScooterId" class="control-label">Скутер</label>
+                <select asp-for="ScooterId" class="form-control" asp-items="ViewBag.ScooterId"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="StatusId" class="control-label">Статус</label>
+                <select asp-for="StatusId" class="form-control" asp-items="ViewBag.StatusId"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartTime" class="control-label">Час початку</label>
+                <input asp-for="StartTime" class="form-control" />
+                <span asp-validation-for="StartTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EndTime" class="control-label">Час завершення</label>
+                <input asp-for="EndTime" class="form-control" />
+                <span asp-validation-for="EndTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalCost" class="control-label">Загальна вартість</label>
+                <input asp-for="TotalCost" class="form-control" type="number" />
+                <span asp-validation-for="TotalCost" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentDate" class="control-label">Дата оплати</label>
+                <input asp-for="PaymentDate" class="form-control" />
+                <span asp-validation-for="PaymentDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Amount" class="control-label">Сума оплати</label>
+                <input asp-for="Amount" class="form-control" type="number" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentMethodId" class="control-label">Спосіб оплати</label>
+                <select asp-for="PaymentMethodId" class="form-control" asp-items="ViewBag.PaymentMethodId"></select>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Rentals\Delete.cshtml ====
+@model ScooterDomain.Model.Rental
+
+@{
+    ViewData["Title"] = "Видалити оренду";
+}
+
+<h1>Видалити оренду</h1>
+
+<h3>Ви впевнені, що хочете видалити цю оренду?</h3>
+<div>
+    <h4>Оренда</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.StartTime)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.StartTime)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EndTime)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EndTime)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.TotalCost)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.TotalCost)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PaymentDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PaymentDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Amount)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Amount)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PaymentMethod)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PaymentMethod.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Rider)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Rider.FirstName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Scooter)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Scooter.Model)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Status.Name)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Видалити" class="btn btn-danger" /> |
+        <a asp-action="Index">Повернутися до списку</a>
+    </form>
+</div>
+
+// ==== Views\Rentals\Details.cshtml ====
+@model ScooterDomain.Model.Rental
+
+@{
+    ViewData["Title"] = "Деталі оренди";
+}
+
+<h1>Деталі оренди</h1>
+
+<div>
+    <h4>Оренда</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.StartTime)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.StartTime)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EndTime)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EndTime)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.TotalCost)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.TotalCost)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PaymentDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PaymentDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Amount)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Amount)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PaymentMethod)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PaymentMethod.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Rider)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Rider.FirstName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Scooter)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Scooter.Model)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Status.Name)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Редагувати</a> |
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+// ==== Views\Rentals\Edit.cshtml ====
+@model ScooterDomain.Model.Rental
+
+@{
+    ViewData["Title"] = "Редагувати оренду";
+}
+
+<h1>Редагувати оренду</h1>
+
+<h4>Оренда</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="RiderId" class="control-label">Користувач</label>
+                <select asp-for="RiderId" class="form-control" asp-items="ViewBag.RiderId"></select>
+                <span asp-validation-for="RiderId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="ScooterId" class="control-label">Скутер</label>
+                <select asp-for="ScooterId" class="form-control" asp-items="ViewBag.ScooterId"></select>
+                <span asp-validation-for="ScooterId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StatusId" class="control-label">Статус</label>
+                <select asp-for="StatusId" class="form-control" asp-items="ViewBag.StatusId"></select>
+                <span asp-validation-for="StatusId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StartTime" class="control-label">Час початку</label>
+                <input asp-for="StartTime" class="form-control" />
+                <span asp-validation-for="StartTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EndTime" class="control-label">Час завершення</label>
+                <input asp-for="EndTime" class="form-control" />
+                <span asp-validation-for="EndTime" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="TotalCost" class="control-label">Загальна вартість</label>
+                <input asp-for="TotalCost" class="form-control" type="number" />
+                <span asp-validation-for="TotalCost" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentDate" class="control-label">Дата оплати</label>
+                <input asp-for="PaymentDate" class="form-control" />
+                <span asp-validation-for="PaymentDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Amount" class="control-label">Сума оплати</label>
+                <input asp-for="Amount" class="form-control" type="number" />
+                <span asp-validation-for="Amount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PaymentMethodId" class="control-label">Спосіб оплати</label>
+                <select asp-for="PaymentMethodId" class="form-control" asp-items="ViewBag.PaymentMethodId"></select>
+                <span asp-validation-for="PaymentMethodId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Rentals\Index.cshtml ====
+@model IEnumerable<ScooterDomain.Model.Rental>
+
+@{
+    ViewData["Title"] = "Оренди";
+}
+
+<h1>Оренди</h1>
+
+<p>
+    <a asp-action="Create">Додати нову оренду</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.StartTime)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.EndTime)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TotalCost)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PaymentDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Amount)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PaymentMethod)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Rider)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Scooter)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.StartTime)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.EndTime)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.TotalCost)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaymentDate)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Amount)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaymentMethod.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Rider.FirstName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Scooter.Model)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Status.Name)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+// ==== Views\Riders\Create.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Додати користувача";
+}
+
+<h1>Додати користувача</h1>
+
+<h4>Користувач</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="FirstName" class="control-label">Ім'я</label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LastName" class="control-label">Прізвище</label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PhoneNumber" class="control-label">Номер телефону</label>
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RegistrationDate" class="control-label">Дата реєстрації</label>
+                <input asp-for="RegistrationDate" class="form-control" />
+                <span asp-validation-for="RegistrationDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AccountBalance" class="control-label">Баланс рахунку</label>
+                <input asp-for="AccountBalance" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="AccountBalance" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Riders\Delete.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Видалити користувача";
+}
+
+<h1>Видалити користувача</h1>
+
+<h3>Ви впевнені, що хочете видалити цього користувача?</h3>
+<div>
+    <h4>Користувач</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.FirstName)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.FirstName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.LastName)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.LastName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PhoneNumber)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PhoneNumber)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.RegistrationDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.RegistrationDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.AccountBalance)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.AccountBalance)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Видалити" class="btn btn-danger" /> |
+        <a asp-action="Index">Повернутися до списку</a>
+    </form>
+</div>
+
+// ==== Views\Riders\Details.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Деталі користувача";
+}
+
+<h1>Деталі користувача</h1>
+
+<div>
+    <h4>Користувач</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.FirstName)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.FirstName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.LastName)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.LastName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.PhoneNumber)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.PhoneNumber)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.RegistrationDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.RegistrationDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.AccountBalance)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.AccountBalance)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Редагувати</a> |
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+<!-- Додайте цей блок у кінець файлу Details.cshtml -->
+<div class="mt-3">
+    <h4>Знижки</h4>
+    <a asp-action="Discounts" asp-route-id="@Model.Id" class="btn btn-info">Переглянути знижки</a>
+</div>
+
+// ==== Views\Riders\Discounts.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Знижки користувача";
+}
+
+<h1>Знижки для @Model.FirstName @Model.LastName</h1>
+
+@if (Model.Discounts.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Відсоток</th>
+                <th>Опис</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var discount in Model.Discounts)
+            {
+                <tr>
+                    <td>@discount.Name</td>
+                    <td>@discount.Percentage%</td>
+                    <td>@discount.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">У цього користувача немає активних знижок.</div>
+}
+
+<div>
+    <a asp-action="Details" asp-route-id="@Model.Id">Назад до профілю</a>
+</div>
+
+// ==== Views\Riders\Edit.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Редагувати користувача";
+}
+
+<h1>Редагувати користувача</h1>
+
+<h4>Користувач</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="FirstName" class="control-label">Ім'я</label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="LastName" class="control-label">Прізвище</label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="PhoneNumber" class="control-label">Номер телефону</label>
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="RegistrationDate" class="control-label">Дата реєстрації</label>
+                <input asp-for="RegistrationDate" class="form-control" />
+                <span asp-validation-for="RegistrationDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="AccountBalance" class="control-label">Баланс рахунку</label>
+                <input asp-for="AccountBalance" class="form-control" type="number" step="0.01" />
+                <span asp-validation-for="AccountBalance" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Riders\Index.cshtml ====
+@model IEnumerable<ScooterDomain.Model.Rider>
+
+@{
+    ViewData["Title"] = "Користувачі";
+}
+
+<h1>Користувачі</h1>
+
+<p>
+    <a asp-action="Create">Додати нового користувача</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.FirstName)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.LastName)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.PhoneNumber)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.RegistrationDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AccountBalance)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.FirstName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.LastName)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PhoneNumber)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.RegistrationDate)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.AccountBalance)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a> |
+                    <a asp-action="ManageDiscounts" asp-route-id="@item.Id">Знижки</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+// ==== Views\Riders\ManageDiscounts.cshtml ====
+@model ScooterDomain.Model.Rider
+
+@{
+    ViewData["Title"] = "Управління знижками";
+}
+
+<h1>Управління знижками для @Model.FirstName @Model.LastName</h1>
+
+<h4>Поточні знижки</h4>
+@if (Model.Discounts.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Відсоток</th>
+                <th>Опис</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var discount in Model.Discounts)
+            {
+                <tr>
+                    <td>@discount.Name</td>
+                    <td>@discount.Percentage%</td>
+                    <td>@discount.Description</td>
+                    <td>
+                        <form asp-action="RemoveDiscount" method="post" style="display:inline;">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="discountId" value="@discount.Id" />
+                            <button type="submit" class="btn btn-danger btn-sm">Видалити</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>У цього користувача поки немає знижок.</p>
+}
+
+<h4>Додати нову знижку</h4>
+<form asp-action="ManageDiscounts" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div class="form-group">
+        <label class="control-label">Виберіть знижку</label>
+        <select name="discountId" class="form-control" asp-items="ViewBag.AvailableDiscounts"></select>
+    </div>
+    <div class="form-group">
+        <input type="submit" value="Додати" class="btn btn-primary" />
+    </div>
+</form>
+
+<div>
+    <a asp-action="Index">Повернутися до списку користувачів</a>
+</div>
+
+// ==== Views\Scooters\Create.cshtml ====
+@model ScooterDomain.Model.Scooter
+
+@{
+    ViewData["Title"] = "Додати скутер";
+}
+
+<h1>Додати скутер</h1>
+
+<h4>Скутер</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <label asp-for="Model" class="control-label">Модель</label>
+                <input asp-for="Model" class="form-control" />
+                <span asp-validation-for="Model" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BatteryLevel" class="control-label">Рівень батареї</label>
+                <input asp-for="BatteryLevel" class="form-control" />
+                <span asp-validation-for="BatteryLevel" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StatusId" class="control-label">Статус</label>
+                <select asp-for="StatusId" class="form-control" asp-items="ViewBag.StatusId"></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentLocation" class="control-label">Поточне розташування</label>
+                <input asp-for="CurrentLocation" class="form-control" />
+                <span asp-validation-for="CurrentLocation" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StationId" class="control-label">Станція</label>
+                <select asp-for="StationId" class="form-control" asp-items="ViewBag.StationId"></select>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Додати" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Scooters\Delete.cshtml ====
+@model ScooterDomain.Model.Scooter
+
+@{
+    ViewData["Title"] = "Видалити скутер";
+}
+
+<h1>Видалити скутер</h1>
+
+<h3>Ви впевнені, що хочете видалити цей скутер?</h3>
+<div>
+    <h4>Скутер</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Model)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Model)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.BatteryLevel)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.BatteryLevel)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CurrentLocation)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.CurrentLocation)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Station)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Station.Location)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Status.Name)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="Видалити" class="btn btn-danger" /> |
+        <a asp-action="Index">Повернутися до списку</a>
+    </form>
+</div>
+
+// ==== Views\Scooters\Details.cshtml ====
+@model ScooterDomain.Model.Scooter
+
+@{
+    ViewData["Title"] = "Деталі скутера";
+}
+
+<h1>Деталі скутера</h1>
+
+<div>
+    <h4>Скутер</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Model)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Model)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.BatteryLevel)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.BatteryLevel)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.CurrentLocation)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.CurrentLocation)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Station)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Station.Location)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.Status.Name)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id">Редагувати</a> |
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+// ==== Views\Scooters\Edit.cshtml ====
+@model ScooterDomain.Model.Scooter
+
+@{
+    ViewData["Title"] = "Редагувати скутер";
+}
+
+<h1>Редагувати скутер</h1>
+
+<h4>Скутер</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+            <div class="form-group">
+                <label asp-for="Model" class="control-label">Модель</label>
+                <input asp-for="Model" class="form-control" />
+                <span asp-validation-for="Model" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="BatteryLevel" class="control-label">Рівень батареї</label>
+                <input asp-for="BatteryLevel" class="form-control" />
+                <span asp-validation-for="BatteryLevel" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StatusId" class="control-label">Статус</label>
+                <select asp-for="StatusId" class="form-control" asp-items="ViewBag.StatusId"></select>
+                <span asp-validation-for="StatusId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="CurrentLocation" class="control-label">Поточне розташування</label>
+                <input asp-for="CurrentLocation" class="form-control" />
+                <span asp-validation-for="CurrentLocation" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="StationId" class="control-label">Станція</label>
+                <select asp-for="StationId" class="form-control" asp-items="ViewBag.StationId"></select>
+                <span asp-validation-for="StationId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Зберегти" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Повернутися до списку</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
+
+// ==== Views\Scooters\Index.cshtml ====
+@model IEnumerable<ScooterDomain.Model.Scooter>
+
+@{
+    ViewData["Title"] = "Скутери";
+}
+
+<h1>Скутери</h1>
+
+<p>
+    <a asp-action="Create">Додати новий скутер</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Model)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.BatteryLevel)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.CurrentLocation)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Station)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Model)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.BatteryLevel)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.CurrentLocation)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Station.Location)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Status.Name)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+// ==== Views\Shared\Error.cshtml ====
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1 class="text-danger">Error.</h1>
+<h2 class="text-danger">An error occurred while processing your request.</h2>
+
+@if (Model.ShowRequestId)
+{
+    <p>
+        <strong>Request ID:</strong> <code>@Model.RequestId</code>
+    </p>
+}
+
+<h3>Development Mode</h3>
+<p>
+    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
+</p>
+<p>
+    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
+    It can result in displaying sensitive information from exceptions to end users.
+    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
+    and restarting the app.
+</p>
+
+
+// ==== Views\Shared\_Layout.cshtml ====
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - ScooterInfrastructure</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">Scooter Rental</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Scooters" asp-action="Index">Скутери</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Riders" asp-action="Index">Користувачі</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="ChargingStations" asp-action="Index">Станції</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Discounts" asp-action="Index">Знижки</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow-1">
+        <div class="container">
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="footer bg-primary text-white text-center py-3">
+        <div class="container">
+            <p>© 2025 - ScooterInfrastructure - <a asp-controller="Home" asp-action="Privacy" class="text-decoration-none text-info">Privacy</a></p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+// ==== Views\Shared\_Layout.cshtml.css ====
+/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
+for details on configuring this project to bundle and minify static web assets. */
+
+a.navbar-brand {
+  white-space: normal;
+  text-align: center;
+  word-break: break-all;
+}
+
+a {
+  color: #0077cc;
+}
+
+.btn-primary {
+  color: #fff;
+  background-color: #1b6ec2;
+  border-color: #1861ac;
+}
+
+.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
+  color: #fff;
+  background-color: #1b6ec2;
+  border-color: #1861ac;
+}
+
+.border-top {
+  border-top: 1px solid #e5e5e5;
+}
+.border-bottom {
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.box-shadow {
+  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+}
+
+button.accept-policy {
+  font-size: 1rem;
+  line-height: inherit;
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 60px;
+}
+
+
+// ==== Views\Shared\_ValidationScriptsPartial.cshtml ====
+<script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+<script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
+
+

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +17,7 @@ namespace ScooterInfrastructure.Controllers
 
         public RentalsController(ScootersContext context)
         {
-            _context = context;
+            _context = context; 
         }
         
         // GET: Rentals
@@ -77,20 +78,37 @@ namespace ScooterInfrastructure.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
+[ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("RiderId,ScooterId,StatusId,StartTime,EndTime,TotalCost,PaymentDate,Amount,PaymentMethodId,Id")] Rental rental)
         {
+            if (rental == null)
+            {
+                return BadRequest("Модель оренди не може бути null.");
+            }
 
             ModelState.Remove("PaymentMethod");
             ModelState.Remove("Rider");
             ModelState.Remove("Scooter");
             ModelState.Remove("Status");
+
+            // Явна валідація моделі
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(rental);
+            if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
+            {
+                foreach (var error in validationResults)
+                {
+                    ModelState.AddModelError(error.MemberNames.First(), error.ErrorMessage);
+                }
+            }
+
             if (ModelState.IsValid)
-           {
+            {
                 _context.Add(rental);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-           }
+                return RedirectToAction(nameof(Index), new { id = rental.RiderId, firstName = ViewBag.FirstName, lastName = ViewBag.LastName });
+            }
+
             ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name", rental.PaymentMethodId);
             ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName", rental.RiderId);
             ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model", rental.ScooterId);
@@ -134,6 +152,18 @@ namespace ScooterInfrastructure.Controllers
             ModelState.Remove("Rider");
             ModelState.Remove("Scooter");
             ModelState.Remove("Status");
+
+            // Явна валідація моделі
+            var validationResults = new List<ValidationResult>();
+            var validationContext = new ValidationContext(rental);
+            if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
+            {
+                foreach (var error in validationResults)
+                {
+                    ModelState.AddModelError(error.MemberNames.First(), error.ErrorMessage);
+                }
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -152,8 +182,9 @@ namespace ScooterInfrastructure.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index), new { id = rental.RiderId, firstName = ViewBag.FirstName, lastName = ViewBag.LastName });
             }
+
             ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name", rental.PaymentMethodId);
             ViewData["RiderId"] = new SelectList(_context.Riders, "Id", "FirstName", rental.RiderId);
             ViewData["ScooterId"] = new SelectList(_context.Scooters, "Id", "Model", rental.ScooterId);

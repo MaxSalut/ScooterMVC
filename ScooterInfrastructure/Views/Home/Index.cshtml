@@ -2,19 +2,19 @@
     ViewData["Title"] = "Головна";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Ласкаво просимо до сервісу оренди скутерів!</h1>
-    <p class="lead">Орендуйте скутери швидко, зручно та безпечно.</p>
+<div class="text-center animate__animated animate__fadeIn">
+    <h1 class="display-4">Ласкаво просимо до сервісу оренди самокатів!</h1>
+    <p class="lead">Орендуйте самокати швидко, зручно та безпечно.</p>
 </div>
 
 <!-- Статистика -->
 <div class="row mt-5">
     <div class="col-md-4">
         <div class="card text-white bg-primary mb-3">
-            <div class="card-header">Доступні скутери</div>
+            <div class="card-header">Доступні самокати</div>
             <div class="card-body">
                 <h5 class="card-title">@ViewBag.AvailableScooters</h5>
-                <p class="card-text">Скутери готові до оренди.</p>
+                <p class="card-text">Самокати готові до оренди.</p>
             </div>
         </div>
     </div>
@@ -39,12 +39,12 @@
 </div>
 
 <!-- Швидкий доступ -->
-<div class="row mt-5">
+<div class="row mt-5 text-center">
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Переглянути скутери</h5>
-                <p class="card-text">Ознайомтеся з нашим парком скутерів.</p>
+                <h5 class="card-title">Переглянути самокати</h5>
+                <p class="card-text">Ознайомтеся з нашим парком самокатів.</p>
                 <a asp-controller="Scooters" asp-action="Index" class="btn btn-primary">Переглянути</a>
             </div>
         </div>
@@ -52,9 +52,9 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Орендувати скутер</h5>
+                <h5 class="card-title">Орендувати самокат</h5>
                 <p class="card-text">Швидко та зручно орендуйте скутер.</p>
-                <a asp-controller="Rentals" asp-action="Create" class="btn btn-success">Орендувати</a>
+                <a asp-controller="Rentals" asp-action="Create" class="btn btn-primary">Орендувати</a>
             </div>
         </div>
     </div>
@@ -63,11 +63,13 @@
             <div class="card-body">
                 <h5 class="card-title">Станції зарядки</h5>
                 <p class="card-text">Знайдіть найближчу станцію зарядки.</p>
-                <a asp-controller="ChargingStations" asp-action="Index" class="btn btn-info">Переглянути</a>
+                <a asp-controller="ChargingStations" asp-action="Index" class="btn btn-primary">Переглянути</a>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Контактна інформація (переміщено вище) -->
 
 <!-- Відгуки -->
 <div class="row mt-5">
@@ -77,7 +79,7 @@
             <div class="carousel-inner">
                 <div class="carousel-item active">
                     <blockquote class="blockquote">
-                        <p>Чудовий сервіс! Скутери завжди в хорошому стані, орендувати дуже зручно.</p>
+                        <p>Чудовий сервіс! Самокати завжди в хорошому стані, орендувати дуже зручно.</p>
                         <footer class="blockquote-footer">Іван Петренко</footer>
                     </blockquote>
                 </div>
@@ -89,7 +91,7 @@
                 </div>
                 <div class="carousel-item">
                     <blockquote class="blockquote">
-                        <p>Зручний додаток, завжди знаходжу скутер поруч.</p>
+                        <p>Зручний додаток, завжди знаходжу самокат поруч.</p>
                         <footer class="blockquote-footer">Андрій Коваленко</footer>
                     </blockquote>
                 </div>
@@ -106,15 +108,20 @@
     </div>
 </div>
 
-<!-- Контактна інформація -->
 <div class="row mt-5">
     <div class="col-md-12">
         <h2>Контакти</h2>
         <p>Якщо у вас виникли питання, зв'яжіться з нами:</p>
-        <ul>
-            <li>Телефон: +380 123 456 789</li>
-            <li>Email: support@scooter-rental.com</li>
-            <li>Адреса: м. Київ, вул. Скутерна, 10</li>
+        <ul class="list-unstyled">
+            <li><i class="fas fa-phone"></i> Телефон: +380 123 456 789</li>
+            <li><i class="fas fa-envelope"></i> Email: support@scooter-rental.com</li>
+            <li><i class="fas fa-map-marker-alt"></i> Адреса: м. Київ, вул. Скутерна, 10</li>
         </ul>
     </div>
 </div>
+
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+}
