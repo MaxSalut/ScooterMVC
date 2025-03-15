@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ScooterDomain.Model;
 
-public partial class ChargingStation : Entity
+public partial class ChargingStation : Entity, IValidatableObject
 {
     [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
     [Display(Name = "Назва")]
@@ -27,4 +27,14 @@ public partial class ChargingStation : Entity
     public int CurrentScooterCount { get; set; }
 
     public virtual ICollection<Scooter> Scooters { get; set; } = new List<Scooter>();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (CurrentScooterCount > ChargingSlots)
+        {
+            yield return new ValidationResult(
+                "Поточна кількість скутерів не може перевищувати кількість слотів.",
+                new[] { nameof(CurrentScooterCount) });
+        }
+    }
 }

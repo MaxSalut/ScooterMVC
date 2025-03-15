@@ -10,6 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="DocumentFormat.OpenXml.Framework" Version="3.3.0" />
+    <PackageReference Include="EPPlus" Version="7.6.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.0" />
@@ -37,7 +40,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ScooterDomain.Model;
 
-public partial class ChargingStation : Entity
+public partial class ChargingStation : Entity, IValidatableObject
 {
     [Required(ErrorMessage = "Поле \"Назва\" обов'язкове для заповнення")]
     [Display(Name = "Назва")]
@@ -60,6 +63,16 @@ public partial class ChargingStation : Entity
     public int CurrentScooterCount { get; set; }
 
     public virtual ICollection<Scooter> Scooters { get; set; } = new List<Scooter>();
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (CurrentScooterCount > ChargingSlots)
+        {
+            yield return new ValidationResult(
+                "Поточна кількість скутерів не може перевищувати кількість слотів.",
+                new[] { nameof(CurrentScooterCount) });
+        }
+    }
 }
 
 // ==== Model\Discount.cs ====
@@ -658,6 +671,58 @@ namespace ScooterInfrastructure.Controllers
 }
 
 
+// ==== Controllers\ChartsController.cs ====
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ScooterInfrastructure;
+
+namespace ScooterInfrastructure.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ChartsController : ControllerBase
+    {
+        private readonly ScootersContext _context;
+
+        public ChartsController(ScootersContext context)
+        {
+            _context = context;
+        }
+
+        // Діаграма 1: Кількість самокатів за статусами
+        [HttpGet("scootersByStatus")]
+        public async Task<IActionResult> GetScootersByStatusAsync()
+        {
+            var data = await _context.Scooters
+                .Include(s => s.Status)
+                .GroupBy(s => s.Status.Name)
+                .Select(g => new
+                {
+                    Status = g.Key,
+                    Count = g.Count()
+                })
+                .ToListAsync();
+
+            return Ok(data);
+        }
+
+        // Діаграма 2: Кількість самокатів на станціях зарядки
+        [HttpGet("scootersByStation")]
+        public async Task<IActionResult> GetScootersByStationAsync()
+        {
+            var data = await _context.ChargingStations
+                .Select(cs => new
+                {
+                    StationName = cs.Name,
+                    Count = cs.CurrentScooterCount
+                })
+                .ToListAsync();
+
+            return Ok(data);
+        }
+    }
+}
+
 // ==== Controllers\DiscountsController.cs ====
 using System;
 using System.Collections.Generic;
@@ -1090,6 +1155,195 @@ namespace ScooterInfrastructure.Controllers
     }
 }
 
+
+// ==== Controllers\ReportsController.cs ====
+// ScooterInfrastructure\Controllers\ReportsController.cs
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
+using ScooterDomain.Model;
+using ScooterInfrastructure;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace ScooterInfrastructure.Controllers
+{
+    public class ReportsController : Controller
+    {
+        private readonly ScootersContext _context;
+        private const string ReportsDirectory = @"C:\Users\mbezv\Desktop\ISTPLAB\DOCX\";
+
+        public ReportsController(ScootersContext context)
+        {
+            _context = context;
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Для EPPlus у некомерційних проєктах
+        }
+
+        // GET: Reports
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        // POST: Імпорт з Excel
+        [HttpPost]
+        public async Task<IActionResult> ImportExcel(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ModelState.AddModelError("file", "Будь ласка, виберіть файл для імпорту.");
+                return View("Index");
+            }
+
+            string savePath = Path.Combine(ReportsDirectory, file.FileName);
+            Directory.CreateDirectory(ReportsDirectory); // Створюємо директорію, якщо її немає
+
+            using (var stream = new FileStream(savePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            using (var package = new ExcelPackage(new FileInfo(savePath)))
+            {
+                var worksheet = package.Workbook.Worksheets[0];
+                int rowCount = worksheet.Dimension.Rows;
+
+                for (int row = 2; row <= rowCount; row++) // Пропускаємо заголовки
+                {
+                    var chargingStation = new ChargingStation
+                    {
+                        Name = worksheet.Cells[row, 1].Value?.ToString(),
+                        Location = worksheet.Cells[row, 2].Value?.ToString(),
+                        ChargingSlots = int.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out int slots) ? slots : 0,
+                        CurrentScooterCount = int.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out int count) ? count : 0
+                    };
+
+                    if (!string.IsNullOrEmpty(chargingStation.Name) && !string.IsNullOrEmpty(chargingStation.Location))
+                    {
+                        _context.ChargingStations.Add(chargingStation);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction("Index", "ChargingStations");
+        }
+
+        // GET: Експорт у Excel
+        public async Task<IActionResult> ExportExcel()
+        {
+            var stations = await _context.ChargingStations.ToListAsync();
+            using (var package = new ExcelPackage())
+            {
+                var worksheet = package.Workbook.Worksheets.Add("ChargingStations");
+                worksheet.Cells[1, 1].Value = "Назва";
+                worksheet.Cells[1, 2].Value = "Розташування";
+                worksheet.Cells[1, 3].Value = "Кількість слотів";
+                worksheet.Cells[1, 4].Value = "Поточна кількість скутерів";
+
+                for (int i = 0; i < stations.Count; i++)
+                {
+                    worksheet.Cells[i + 2, 1].Value = stations[i].Name;
+                    worksheet.Cells[i + 2, 2].Value = stations[i].Location;
+                    worksheet.Cells[i + 2, 3].Value = stations[i].ChargingSlots;
+                    worksheet.Cells[i + 2, 4].Value = stations[i].CurrentScooterCount;
+                }
+
+                worksheet.Cells.AutoFitColumns();
+                var stream = new MemoryStream(package.GetAsByteArray());
+                string fileName = $"ChargingStationsReport_{DateTime.Now:yyyyMMdd}.xlsx";
+                string savePath = Path.Combine(ReportsDirectory, fileName);
+                System.IO.File.WriteAllBytes(savePath, stream.ToArray());
+
+                return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+        }
+
+        // POST: Імпорт з .docx
+        [HttpPost]
+        public async Task<IActionResult> ImportDocx(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ModelState.AddModelError("file", "Будь ласка, виберіть файл для імпорту.");
+                return View("Index");
+            }
+
+            string savePath = Path.Combine(ReportsDirectory, file.FileName);
+            Directory.CreateDirectory(ReportsDirectory);
+
+            using (var stream = new FileStream(savePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            using (WordprocessingDocument doc = WordprocessingDocument.Open(savePath, false))
+            {
+                string text = doc.MainDocumentPart.Document.Body.InnerText;
+                var lines = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var line in lines.Skip(1)) // Пропускаємо заголовок
+                {
+                    var parts = line.Split('|');
+                    if (parts.Length >= 4)
+                    {
+                        var chargingStation = new ChargingStation
+                        {
+                            Name = parts[0].Trim(),
+                            Location = parts[1].Trim(),
+                            ChargingSlots = int.TryParse(parts[2].Trim(), out int slots) ? slots : 0,
+                            CurrentScooterCount = int.TryParse(parts[3].Trim(), out int count) ? count : 0
+                        };
+
+                        if (!string.IsNullOrEmpty(chargingStation.Name) && !string.IsNullOrEmpty(chargingStation.Location))
+                        {
+                            _context.ChargingStations.Add(chargingStation);
+                        }
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction("Index", "ChargingStations");
+        }
+
+        // GET: Експорт у .docx
+        public async Task<IActionResult> ExportDocx()
+        {
+            var stations = await _context.ChargingStations.ToListAsync();
+            string fileName = $"ChargingStationsReport_{DateTime.Now:yyyyMMdd}.docx";
+            string savePath = Path.Combine(ReportsDirectory, fileName);
+
+            using (WordprocessingDocument doc = WordprocessingDocument.Create(savePath, WordprocessingDocumentType.Document))
+            {
+                MainDocumentPart mainPart = doc.AddMainDocumentPart();
+                mainPart.Document = new Document();
+                Body body = mainPart.Document.AppendChild(new Body());
+
+                Paragraph title = body.AppendChild(new Paragraph());
+                Run titleRun = title.AppendChild(new Run());
+                titleRun.AppendChild(new Text("Звіт про станції зарядки"));
+
+                foreach (var station in stations)
+                {
+                    Paragraph para = body.AppendChild(new Paragraph());
+                    Run run = para.AppendChild(new Run());
+                    run.AppendChild(new Text($"{station.Name} | {station.Location} | {station.ChargingSlots} | {station.CurrentScooterCount}"));
+                }
+            }
+
+            var stream = new MemoryStream(System.IO.File.ReadAllBytes(savePath));
+            return File(stream, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
+        }
+    }
+}
 
 // ==== Controllers\RidersController.cs ====
 using System;
@@ -1799,6 +2053,15 @@ namespace ScooterInfrastructure.Models
 <p>
     <a asp-action="Create">Додати нову станцію</a>
 </p>
+
+<!-- Діаграма: Кількість самокатів на станціях зарядки -->
+<div class="row mb-4">
+    <div class="col-md-8 offset-md-2">
+        <h2>Кількість самокатів на станціях зарядки</h2>
+        <div id="scootersByStationChart" style="width: 100%; height: 400px;"></div>
+    </div>
+</div>
+
 <table class="table">
     <thead>
         <tr>
@@ -1842,6 +2105,39 @@ namespace ScooterInfrastructure.Models
         }
     </tbody>
 </table>
+
+@section Scripts {
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawScootersChart);
+
+        function drawScootersChart() {
+            fetch('/api/charts/scootersByStation')
+                .then(response => response.json())
+                .then(data => {
+                    var dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn('string', 'Станція');
+                    dataTable.addColumn('number', 'Кількість самокатів');
+
+                    data.forEach(item => {
+                        dataTable.addRow([item.stationName, item.count]);
+                    });
+
+                    var options = {
+                        title: 'Кількість самокатів на станціях зарядки',
+                        width: '100%',
+                        height: 400,
+                        legend: { position: 'none' }
+                    };
+
+                    var chart = new google.visualization.ColumnChart(document.getElementById('scootersByStationChart'));
+                    chart.draw(dataTable, options);
+                })
+                .catch(error => console.error('Помилка завантаження даних:', error));
+        }
+    </script>
+}
 
 // ==== Views\Discounts\Create.cshtml ====
 @model ScooterDomain.Model.Discount
@@ -2068,6 +2364,7 @@ namespace ScooterInfrastructure.Models
 </table>
 
 // ==== Views\Home\Index.cshtml ====
+@inject ScootersContext Context
 @{
     ViewData["Title"] = "Головна";
 }
@@ -2139,7 +2436,13 @@ namespace ScooterInfrastructure.Models
     </div>
 </div>
 
-<!-- Контактна інформація (переміщено вище) -->
+<!-- Діаграма: Розподіл самокатів за статусами -->
+<div class="row mt-5">
+    <div class="col-md-6 offset-md-3">
+        <h2>Розподіл самокатів за статусами</h2>
+        <div id="scootersByStatusChart" style="width: 100%; height: 400px;"></div>
+    </div>
+</div>
 
 <!-- Відгуки -->
 <div class="row mt-5">
@@ -2190,10 +2493,39 @@ namespace ScooterInfrastructure.Models
     </div>
 </div>
 
-
 @section Scripts {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawScootersChart);
+
+        function drawScootersChart() {
+            fetch('/api/charts/scootersByStatus')
+                .then(response => response.json())
+                .then(data => {
+                    var dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn('string', 'Статус');
+                    dataTable.addColumn('number', 'Кількість');
+
+                    data.forEach(item => {
+                        dataTable.addRow([item.status, item.count]);
+                    });
+
+                    var options = {
+                        title: 'Розподіл самокатів за статусами',
+                        pieHole: 0.4,
+                        width: '100%',
+                        height: 400
+                    };
+
+                    var chart = new google.visualization.PieChart(document.getElementById('scootersByStatusChart'));
+                    chart.draw(dataTable, options);
+                })
+                .catch(error => console.error('Помилка завантаження даних:', error));
+        }
+    </script>
 }
 
 // ==== Views\Home\Privacy.cshtml ====
@@ -2592,6 +2924,99 @@ namespace ScooterInfrastructure.Models
         }
     </tbody>
 </table>
+
+// ==== Views\Reports\Index.cshtml ====
+@model dynamic
+@{
+    ViewData["Title"] = "Звіти";
+}
+
+<h1>Звіти</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Імпорт звітів</h3>
+        <form asp-action="ImportExcel" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Виберіть таблицю:</label>
+                <select name="tableName" class="form-control">
+                    <option value="ChargingStations">ChargingStations</option>
+                    <option value="Scooters">Scooters</option>
+                    <option value="ScooterStatuses">ScooterStatuses</option>
+                    <option value="Rider">Rider</option>
+                    <option value="Discounts">Discounts</option>
+                    <option value="RiderDiscounts">RiderDiscounts</option>
+                    <option value="PaymentMethods">PaymentMethods</option>
+                    <option value="RentalStatuses">RentalStatuses</option>
+                    <option value="Rentals">Rentals</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Виберіть Excel-файл:</label>
+                <input type="file" name="file" class="form-control" accept=".xls,.xlsx" />
+            </div>
+            <input type="submit" value="Імпортувати з Excel" class="btn btn-primary" />
+        </form>
+        <form asp-action="ImportDocx" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Виберіть таблицю:</label>
+                <select name="tableName" class="form-control">
+                    <option value="ChargingStations">ChargingStations</option>
+                    <option value="Scooters">Scooters</option>
+                    <option value="ScooterStatuses">ScooterStatuses</option>
+                    <option value="Rider">Rider</option>
+                    <option value="Discounts">Discounts</option>
+                    <option value="RiderDiscounts">RiderDiscounts</option>
+                    <option value="PaymentMethods">PaymentMethods</option>
+                    <option value="RentalStatuses">RentalStatuses</option>
+                    <option value="Rentals">Rentals</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Виберіть DOCX-файл:</label>
+                <input type="file" name="file" class="form-control" accept=".docx" />
+            </div>
+            <input type="submit" value="Імпортувати з DOCX" class="btn btn-primary" />
+        </form>
+    </div>
+    <div class="col-md-6">
+        <h3>Експорт звітів</h3>
+        <form asp-action="ExportExcel" method="get">
+            <div class="form-group">
+                <label>Виберіть таблицю:</label>
+                <select name="tableName" class="form-control">
+                    <option value="ChargingStations">ChargingStations</option>
+                    <option value="Scooters">Scooters</option>
+                    <option value="ScooterStatuses">ScooterStatuses</option>
+                    <option value="Rider">Rider</option>
+                    <option value="Discounts">Discounts</option>
+                    <option value="RiderDiscounts">RiderDiscounts</option>
+                    <option value="PaymentMethods">PaymentMethods</option>
+                    <option value="RentalStatuses">RentalStatuses</option>
+                    <option value="Rentals">Rentals</option>
+                </select>
+            </div>
+            <input type="submit" value="Експортувати в Excel" class="btn btn-success" />
+        </form>
+        <form asp-action="ExportDocx" method="get">
+            <div class="form-group">
+                <label>Виберіть таблицю:</label>
+                <select name="tableName" class="form-control">
+                    <option value="ChargingStations">ChargingStations</option>
+                    <option value="Scooters">Scooters</option>
+                    <option value="ScooterStatuses">ScooterStatuses</option>
+                    <option value="Rider">Rider</option>
+                    <option value="Discounts">Discounts</option>
+                    <option value="RiderDiscounts">RiderDiscounts</option>
+                    <option value="PaymentMethods">PaymentMethods</option>
+                    <option value="RentalStatuses">RentalStatuses</option>
+                    <option value="Rentals">Rentals</option>
+                </select>
+            </div>
+            <input type="submit" value="Експортувати в DOCX" class="btn btn-success" />
+        </form>
+    </div>
+</div>
 
 // ==== Views\Riders\Create.cshtml ====
 @model ScooterDomain.Model.Rider
@@ -3287,6 +3712,7 @@ else
 
 
 // ==== Views\Shared\_Layout.cshtml ====
+<!-- ScooterInfrastructure\Views\Shared\_Layout.cshtml -->
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -3317,6 +3743,9 @@ else
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Discounts" asp-action="Index">Знижки</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Reports" asp-action="Index">Звіти</a>
                         </li>
                     </ul>
                 </div>
