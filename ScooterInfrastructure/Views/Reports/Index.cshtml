@@ -3,89 +3,97 @@
     ViewData["Title"] = "Звіти";
 }
 
-<h1>Звіти</h1>
+<h1>Управління звітами</h1>
 
-<div class="row">
+<div class="row mt-4">
     <div class="col-md-6">
-        <h3>Імпорт звітів</h3>
-        <form asp-action="ImportExcel" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label>Виберіть таблицю:</label>
-                <select name="tableName" class="form-control">
-                    <option value="ChargingStations">ChargingStations</option>
-                    <option value="Scooters">Scooters</option>
-                    <option value="ScooterStatuses">ScooterStatuses</option>
-                    <option value="Rider">Rider</option>
-                    <option value="Discounts">Discounts</option>
-                    <option value="RiderDiscounts">RiderDiscounts</option>
-                    <option value="PaymentMethods">PaymentMethods</option>
-                    <option value="RentalStatuses">RentalStatuses</option>
-                    <option value="Rentals">Rentals</option>
-                </select>
+        <div class="card">
+            <div class="card-header bg-primary text-white">Імпорт даних</div>
+            <div class="card-body">
+                <h5>З Excel</h5>
+                <form asp-action="ImportExcel" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label>Виберіть таблицю:</label>
+                        <select name="tableName" class="form-control">
+                            <option value="ChargingStations">Станції</option>
+                            <option value="Scooters">Скутери</option>
+                            <option value="Riders">Користувачі</option>
+                            <option value="Discounts">Знижки</option>
+                            <option value="Rentals">Оренди</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="file" name="file" class="form-control" accept=".xlsx" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Імпортувати</button>
+                </form>
+
+                <hr>
+
+                <h5>З Word</h5>
+                <form asp-action="ImportDocx" method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label>Виберіть таблицю:</label>
+                        <select name="tableName" class="form-control">
+                            <option value="ChargingStations">Станції</option>
+                            <option value="Scooters">Скутери</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <input type="file" name="file" class="form-control" accept=".docx" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Імпортувати</button>
+                </form>
             </div>
-            <div class="form-group">
-                <label>Виберіть Excel-файл:</label>
-                <input type="file" name="file" class="form-control" accept=".xls,.xlsx" />
-            </div>
-            <input type="submit" value="Імпортувати з Excel" class="btn btn-primary" />
-        </form>
-        <form asp-action="ImportDocx" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label>Виберіть таблицю:</label>
-                <select name="tableName" class="form-control">
-                    <option value="ChargingStations">ChargingStations</option>
-                    <option value="Scooters">Scooters</option>
-                    <option value="ScooterStatuses">ScooterStatuses</option>
-                    <option value="Rider">Rider</option>
-                    <option value="Discounts">Discounts</option>
-                    <option value="RiderDiscounts">RiderDiscounts</option>
-                    <option value="PaymentMethods">PaymentMethods</option>
-                    <option value="RentalStatuses">RentalStatuses</option>
-                    <option value="Rentals">Rentals</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Виберіть DOCX-файл:</label>
-                <input type="file" name="file" class="form-control" accept=".docx" />
-            </div>
-            <input type="submit" value="Імпортувати з DOCX" class="btn btn-primary" />
-        </form>
+        </div>
     </div>
+
     <div class="col-md-6">
-        <h3>Експорт звітів</h3>
-        <form asp-action="ExportExcel" method="get">
-            <div class="form-group">
-                <label>Виберіть таблицю:</label>
-                <select name="tableName" class="form-control">
-                    <option value="ChargingStations">ChargingStations</option>
-                    <option value="Scooters">Scooters</option>
-                    <option value="ScooterStatuses">ScooterStatuses</option>
-                    <option value="Rider">Rider</option>
-                    <option value="Discounts">Discounts</option>
-                    <option value="RiderDiscounts">RiderDiscounts</option>
-                    <option value="PaymentMethods">PaymentMethods</option>
-                    <option value="RentalStatuses">RentalStatuses</option>
-                    <option value="Rentals">Rentals</option>
-                </select>
+        <div class="card">
+            <div class="card-header bg-success text-white">Експорт даних</div>
+            <div class="card-body">
+                <h5>В Excel</h5>
+                <form asp-action="ExportExcel" method="get">
+                    <div class="form-group">
+                        <label>Виберіть таблицю:</label>
+                        <select name="tableName" class="form-control">
+                            <option value="ChargingStations">Станції</option>
+                            <option value="Scooters">Скутери</option>
+                            <option value="Riders">Користувачі</option>
+                            <option value="Discounts">Знижки</option>
+                            <option value="Rentals">Оренди</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Експортувати</button>
+                </form>
+
+                <hr>
+
+                <h5>В Word</h5>
+                <form asp-action="ExportDocx" method="get">
+                    <div class="form-group">
+                        <label>Виберіть таблицю:</label>
+                        <select name="tableName" class="form-control">
+                            <option value="ChargingStations">Станції</option>
+                            <option value="Scooters">Скутери</option>
+                            <option value="Riders">Користувачі</option>
+                            <option value="Discounts">Знижки</option>
+                            <option value="Rentals">Оренди</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Експортувати</button>
+                </form>
             </div>
-            <input type="submit" value="Експортувати в Excel" class="btn btn-success" />
-        </form>
-        <form asp-action="ExportDocx" method="get">
-            <div class="form-group">
-                <label>Виберіть таблицю:</label>
-                <select name="tableName" class="form-control">
-                    <option value="ChargingStations">ChargingStations</option>
-                    <option value="Scooters">Scooters</option>
-                    <option value="ScooterStatuses">ScooterStatuses</option>
-                    <option value="Rider">Rider</option>
-                    <option value="Discounts">Discounts</option>
-                    <option value="RiderDiscounts">RiderDiscounts</option>
-                    <option value="PaymentMethods">PaymentMethods</option>
-                    <option value="RentalStatuses">RentalStatuses</option>
-                    <option value="Rentals">Rentals</option>
-                </select>
-            </div>
-            <input type="submit" value="Експортувати в DOCX" class="btn btn-success" />
-        </form>
+        </div>
     </div>
 </div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger mt-3">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <p>@error.ErrorMessage</p>
+        }
+    </div>
+}
