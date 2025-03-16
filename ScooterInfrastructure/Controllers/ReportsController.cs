@@ -336,8 +336,76 @@ namespace ScooterInfrastructure.Controllers
                         }
                         break;
 
+                    case "Riders":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length >= 5)
+                            {
+                                var rider = new Rider
+                                {
+                                    FirstName = parts[0].Trim(),
+                                    LastName = parts[1].Trim(),
+                                    PhoneNumber = parts[2].Trim(),
+                                    RegistrationDate = DateOnly.TryParse(parts[3].Trim(), out DateOnly regDate) ? regDate : DateOnly.FromDateTime(DateTime.Now),
+                                    AccountBalance = decimal.TryParse(parts[4].Trim(), out decimal balance) ? balance : 0
+                                };
+                                if (!string.IsNullOrEmpty(rider.FirstName) && !string.IsNullOrEmpty(rider.LastName))
+                                {
+                                    _context.Riders.Add(rider);
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Discounts":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length >= 3)
+                            {
+                                var discount = new Discount
+                                {
+                                    Name = parts[0].Trim(),
+                                    Percentage = decimal.TryParse(parts[1].Trim(), out decimal percentage) ? percentage : 0,
+                                    Description = parts[2].Trim()
+                                };
+                                if (!string.IsNullOrEmpty(discount.Name))
+                                {
+                                    _context.Discounts.Add(discount);
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Rentals":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length >= 9)
+                            {
+                                var rental = new Rental
+                                {
+                                    RiderId = int.TryParse(parts[0].Trim(), out int riderId) ? riderId : 0,
+                                    ScooterId = int.TryParse(parts[1].Trim(), out int scooterId) ? scooterId : 0,
+                                    StatusId = int.TryParse(parts[2].Trim(), out int statusId) ? statusId : 1,
+                                    StartTime = DateTime.TryParse(parts[3].Trim(), out DateTime start) ? start : DateTime.Now,
+                                    EndTime = DateTime.TryParse(parts[4].Trim(), out DateTime end) ? end : null,
+                                    TotalCost = decimal.TryParse(parts[5].Trim(), out decimal cost) ? cost : 0,
+                                    PaymentDate = DateTime.TryParse(parts[6].Trim(), out DateTime payDate) ? payDate : null,
+                                    Amount = decimal.TryParse(parts[7].Trim(), out decimal amount) ? amount : null,
+                                    PaymentMethodId = int.TryParse(parts[8].Trim(), out int payMethod) ? payMethod : null
+                                };
+                                if (rental.RiderId > 0 && rental.ScooterId > 0)
+                                {
+                                    _context.Rentals.Add(rental);
+                                }
+                            }
+                        }
+                        break;
+
                     default:
-                        ModelState.AddModelError("tableName", "Імпорт .docx підтримується лише для ChargingStations та Scooters.");
+                        ModelState.AddModelError("tableName", "Невірно вказана таблиця.");
                         return View("Index");
                 }
 
@@ -347,7 +415,7 @@ namespace ScooterInfrastructure.Controllers
             return RedirectToAction("Index", tableName);
         }
 
-        // GET: Експорт у .docx
+        [HttpGet]
         public async Task<IActionResult> ExportDocx(string tableName)
         {
             string fileName = $"{tableName}_Report_{DateTime.Now:yyyyMMdd}.docx";
@@ -385,8 +453,38 @@ namespace ScooterInfrastructure.Controllers
                         }
                         break;
 
+                    case "Riders":
+                        var riders = await _context.Riders.ToListAsync();
+                        foreach (var rider in riders)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{rider.FirstName} | {rider.LastName} | {rider.PhoneNumber} | {rider.RegistrationDate} | {rider.AccountBalance}"));
+                        }
+                        break;
+
+                    case "Discounts":
+                        var discounts = await _context.Discounts.ToListAsync();
+                        foreach (var discount in discounts)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{discount.Name} | {discount.Percentage} | {discount.Description}"));
+                        }
+                        break;
+
+                    case "Rentals":
+                        var rentals = await _context.Rentals.ToListAsync();
+                        foreach (var rental in rentals)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{rental.RiderId} | {rental.ScooterId} | {rental.StatusId} | {rental.StartTime:yyyy-MM-dd HH:mm} | {rental.EndTime:yyyy-MM-dd HH:mm} | {rental.TotalCost} | {rental.PaymentDate:yyyy-MM-dd HH:mm} | {rental.Amount} | {rental.PaymentMethodId}"));
+                        }
+                        break;
+
                     default:
-                        return BadRequest("Експорт .docx підтримується лише для ChargingStations та Scooters.");
+                        return BadRequest("Невірно вказана таблиця.");
                 }
             }
 
