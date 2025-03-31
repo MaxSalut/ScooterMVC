@@ -12,22 +12,22 @@
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="DocumentFormat.OpenXml.Framework" Version="3.3.0" />
-    <PackageReference Include="EPPlus" Version="7.6.1" />
+    <PackageReference Include="EPPlus" Version="7.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.2">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.3" />
   </ItemGroup>
 
 </Project>
@@ -1010,7 +1010,6 @@ namespace ScooterInfrastructure.Controllers
             ModelState.Remove("Scooter");
             ModelState.Remove("Status");
 
-            // Явна валідація моделі
             var validationResults = new List<ValidationResult>();
             var validationContext = new ValidationContext(rental);
             if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
@@ -1157,7 +1156,6 @@ namespace ScooterInfrastructure.Controllers
 
 
 // ==== Controllers\ReportsController.cs ====
-// ScooterInfrastructure\Controllers\ReportsController.cs
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -1170,6 +1168,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations; // Додано для валідації
 
 namespace ScooterInfrastructure.Controllers
 {
@@ -1192,7 +1191,7 @@ namespace ScooterInfrastructure.Controllers
 
         // POST: Імпорт з Excel
         [HttpPost]
-        public async Task<IActionResult> ImportExcel(IFormFile file)
+        public async Task<IActionResult> ImportExcel(IFormFile file, string tableName)
         {
             if (file == null || file.Length == 0)
             {
@@ -1201,7 +1200,7 @@ namespace ScooterInfrastructure.Controllers
             }
 
             string savePath = Path.Combine(ReportsDirectory, file.FileName);
-            Directory.CreateDirectory(ReportsDirectory); // Створюємо директорію, якщо її немає
+            Directory.CreateDirectory(ReportsDirectory);
 
             using (var stream = new FileStream(savePath, FileMode.Create))
             {
@@ -1211,53 +1210,351 @@ namespace ScooterInfrastructure.Controllers
             using (var package = new ExcelPackage(new FileInfo(savePath)))
             {
                 var worksheet = package.Workbook.Worksheets[0];
-                int rowCount = worksheet.Dimension.Rows;
 
-                for (int row = 2; row <= rowCount; row++) // Пропускаємо заголовки
+                // Перевірка структури файлу
+                if (worksheet.Dimension == null)
                 {
-                    var chargingStation = new ChargingStation
-                    {
-                        Name = worksheet.Cells[row, 1].Value?.ToString(),
-                        Location = worksheet.Cells[row, 2].Value?.ToString(),
-                        ChargingSlots = int.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out int slots) ? slots : 0,
-                        CurrentScooterCount = int.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out int count) ? count : 0
-                    };
-
-                    if (!string.IsNullOrEmpty(chargingStation.Name) && !string.IsNullOrEmpty(chargingStation.Location))
-                    {
-                        _context.ChargingStations.Add(chargingStation);
-                    }
+                    ModelState.AddModelError("file", "Файл порожній або пошкоджений.");
+                    return View("Index");
                 }
 
-                await _context.SaveChangesAsync();
+                int rowCount = worksheet.Dimension.Rows;
+                int colCount = worksheet.Dimension.Columns;
+
+                switch (tableName)
+                {
+                    case "ChargingStations":
+                        if (colCount < 4 || worksheet.Cells[1, 1].Value?.ToString() != "Назва" ||
+                            worksheet.Cells[1, 2].Value?.ToString() != "Розташування" ||
+                            worksheet.Cells[1, 3].Value?.ToString() != "Кількість слотів" ||
+                            worksheet.Cells[1, 4].Value?.ToString() != "Поточна кількість скутерів")
+                        {
+                            ModelState.AddModelError("file", "Невірна структура файлу. Очікуються стовпці: Назва, Розташування, Кількість слотів, Поточна кількість скутерів.");
+                            return View("Index");
+                        }
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            var chargingStation = new ChargingStation
+                            {
+                                Name = worksheet.Cells[row, 1].Value?.ToString(),
+                                Location = worksheet.Cells[row, 2].Value?.ToString(),
+                                ChargingSlots = int.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out int slots) ? slots : 0,
+                                CurrentScooterCount = int.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out int count) ? count : 0
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(chargingStation);
+                            if (Validator.TryValidateObject(chargingStation, validationContext, validationResults, true))
+                            {
+                                _context.ChargingStations.Add(chargingStation);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок {row}: {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Scooters":
+                        if (colCount < 5 || worksheet.Cells[1, 1].Value?.ToString() != "Модель" ||
+                            worksheet.Cells[1, 2].Value?.ToString() != "Рівень батареї" ||
+                            worksheet.Cells[1, 3].Value?.ToString() != "Статус ID" ||
+                            worksheet.Cells[1, 4].Value?.ToString() != "Поточне розташування" ||
+                            worksheet.Cells[1, 5].Value?.ToString() != "Станція ID")
+                        {
+                            ModelState.AddModelError("file", "Невірна структура файлу. Очікуються стовпці: Модель, Рівень батареї, Статус ID, Поточне розташування, Станція ID.");
+                            return View("Index");
+                        }
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            var scooter = new Scooter
+                            {
+                                Model = worksheet.Cells[row, 1].Value?.ToString(),
+                                BatteryLevel = int.TryParse(worksheet.Cells[row, 2].Value?.ToString(), out int level) ? level : 0,
+                                StatusId = int.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out int status) ? status : 1,
+                                CurrentLocation = worksheet.Cells[row, 4].Value?.ToString(),
+                                StationId = int.TryParse(worksheet.Cells[row, 5].Value?.ToString(), out int stationId) ? stationId : null
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(scooter);
+                            if (Validator.TryValidateObject(scooter, validationContext, validationResults, true))
+                            {
+                                _context.Scooters.Add(scooter);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок {row}: {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Riders":
+                        if (colCount < 5 || worksheet.Cells[1, 1].Value?.ToString() != "Ім'я" ||
+                            worksheet.Cells[1, 2].Value?.ToString() != "Прізвище" ||
+                            worksheet.Cells[1, 3].Value?.ToString() != "Номер телефону" ||
+                            worksheet.Cells[1, 4].Value?.ToString() != "Дата реєстрації" ||
+                            worksheet.Cells[1, 5].Value?.ToString() != "Баланс рахунку")
+                        {
+                            ModelState.AddModelError("file", "Невірна структура файлу. Очікуються стовпці: Ім'я, Прізвище, Номер телефону, Дата реєстрації, Баланс рахунку.");
+                            return View("Index");
+                        }
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            var rider = new Rider
+                            {
+                                FirstName = worksheet.Cells[row, 1].Value?.ToString(),
+                                LastName = worksheet.Cells[row, 2].Value?.ToString(),
+                                PhoneNumber = worksheet.Cells[row, 3].Value?.ToString(),
+                                RegistrationDate = DateOnly.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out DateOnly regDate) ? regDate : DateOnly.FromDateTime(DateTime.Now),
+                                AccountBalance = decimal.TryParse(worksheet.Cells[row, 5].Value?.ToString(), out decimal balance) ? balance : 0
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(rider);
+                            if (Validator.TryValidateObject(rider, validationContext, validationResults, true))
+                            {
+                                _context.Riders.Add(rider);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок {row}: {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Discounts":
+                        if (colCount < 3 || worksheet.Cells[1, 1].Value?.ToString() != "Назва" ||
+                            worksheet.Cells[1, 2].Value?.ToString() != "Відсоток знижки" ||
+                            worksheet.Cells[1, 3].Value?.ToString() != "Опис")
+                        {
+                            ModelState.AddModelError("file", "Невірна структура файлу. Очікуються стовпці: Назва, Відсоток знижки, Опис.");
+                            return View("Index");
+                        }
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            var discount = new Discount
+                            {
+                                Name = worksheet.Cells[row, 1].Value?.ToString(),
+                                Percentage = decimal.TryParse(worksheet.Cells[row, 2].Value?.ToString(), out decimal percentage) ? percentage : 0,
+                                Description = worksheet.Cells[row, 3].Value?.ToString()
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(discount);
+                            if (Validator.TryValidateObject(discount, validationContext, validationResults, true))
+                            {
+                                _context.Discounts.Add(discount);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок {row}: {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Rentals":
+                        if (colCount < 9 || worksheet.Cells[1, 1].Value?.ToString() != "Rider ID" ||
+                            worksheet.Cells[1, 2].Value?.ToString() != "Scooter ID" ||
+                            worksheet.Cells[1, 3].Value?.ToString() != "Status ID" ||
+                            worksheet.Cells[1, 4].Value?.ToString() != "Час початку" ||
+                            worksheet.Cells[1, 5].Value?.ToString() != "Час завершення" ||
+                            worksheet.Cells[1, 6].Value?.ToString() != "Загальна вартість" ||
+                            worksheet.Cells[1, 7].Value?.ToString() != "Дата оплати" ||
+                            worksheet.Cells[1, 8].Value?.ToString() != "Сума оплати" ||
+                            worksheet.Cells[1, 9].Value?.ToString() != "Payment Method ID")
+                        {
+                            ModelState.AddModelError("file", "Невірна структура файлу. Очікуються стовпці: Rider ID, Scooter ID, Status ID, Час початку, Час завершення, Загальна вартість, Дата оплати, Сума оплати, Payment Method ID.");
+                            return View("Index");
+                        }
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            var rental = new Rental
+                            {
+                                RiderId = int.TryParse(worksheet.Cells[row, 1].Value?.ToString(), out int riderId) ? riderId : 0,
+                                ScooterId = int.TryParse(worksheet.Cells[row, 2].Value?.ToString(), out int scooterId) ? scooterId : 0,
+                                StatusId = int.TryParse(worksheet.Cells[row, 3].Value?.ToString(), out int statusId) ? statusId : 1,
+                                StartTime = DateTime.TryParse(worksheet.Cells[row, 4].Value?.ToString(), out DateTime start) ? start : DateTime.Now,
+                                EndTime = DateTime.TryParse(worksheet.Cells[row, 5].Value?.ToString(), out DateTime end) ? end : null,
+                                TotalCost = decimal.TryParse(worksheet.Cells[row, 6].Value?.ToString(), out decimal cost) ? cost : 0,
+                                PaymentDate = DateTime.TryParse(worksheet.Cells[row, 7].Value?.ToString(), out DateTime payDate) ? payDate : null,
+                                Amount = decimal.TryParse(worksheet.Cells[row, 8].Value?.ToString(), out decimal amount) ? amount : null,
+                                PaymentMethodId = int.TryParse(worksheet.Cells[row, 9].Value?.ToString(), out int payMethod) ? payMethod : null
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(rental);
+                            if (Validator.TryValidateObject(rental, validationContext, validationResults, true))
+                            {
+                                _context.Rentals.Add(rental);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок {row}: {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    default:
+                        ModelState.AddModelError("tableName", "Невірно вказана таблиця.");
+                        return View("Index");
+                }
+
+                if (ModelState.IsValid)
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction("Index", tableName);
+                }
             }
 
-            return RedirectToAction("Index", "ChargingStations");
+            return View("Index");
         }
 
         // GET: Експорт у Excel
-        public async Task<IActionResult> ExportExcel()
+        public async Task<IActionResult> ExportExcel(string tableName, int? statusId = null, DateTime? startDate = null, DateTime? endDate = null)
         {
-            var stations = await _context.ChargingStations.ToListAsync();
             using (var package = new ExcelPackage())
             {
-                var worksheet = package.Workbook.Worksheets.Add("ChargingStations");
-                worksheet.Cells[1, 1].Value = "Назва";
-                worksheet.Cells[1, 2].Value = "Розташування";
-                worksheet.Cells[1, 3].Value = "Кількість слотів";
-                worksheet.Cells[1, 4].Value = "Поточна кількість скутерів";
+                var worksheet = package.Workbook.Worksheets.Add(tableName);
 
-                for (int i = 0; i < stations.Count; i++)
+                switch (tableName)
                 {
-                    worksheet.Cells[i + 2, 1].Value = stations[i].Name;
-                    worksheet.Cells[i + 2, 2].Value = stations[i].Location;
-                    worksheet.Cells[i + 2, 3].Value = stations[i].ChargingSlots;
-                    worksheet.Cells[i + 2, 4].Value = stations[i].CurrentScooterCount;
+                    case "ChargingStations":
+                        var stations = await _context.ChargingStations.ToListAsync();
+                        worksheet.Cells[1, 1].Value = "Назва";
+                        worksheet.Cells[1, 2].Value = "Розташування";
+                        worksheet.Cells[1, 3].Value = "Кількість слотів";
+                        worksheet.Cells[1, 4].Value = "Поточна кількість скутерів";
+                        for (int i = 0; i < stations.Count; i++)
+                        {
+                            worksheet.Cells[i + 2, 1].Value = stations[i].Name;
+                            worksheet.Cells[i + 2, 2].Value = stations[i].Location;
+                            worksheet.Cells[i + 2, 3].Value = stations[i].ChargingSlots;
+                            worksheet.Cells[i + 2, 4].Value = stations[i].CurrentScooterCount;
+                        }
+                        break;
+
+                    case "Scooters":
+                        var scootersQuery = _context.Scooters.AsQueryable();
+                        if (statusId.HasValue)
+                        {
+                            scootersQuery = scootersQuery.Where(s => s.StatusId == statusId.Value);
+                        }
+                        var scooters = await scootersQuery.ToListAsync();
+                        worksheet.Cells[1, 1].Value = "Модель";
+                        worksheet.Cells[1, 2].Value = "Рівень батареї";
+                        worksheet.Cells[1, 3].Value = "Статус ID";
+                        worksheet.Cells[1, 4].Value = "Поточне розташування";
+                        worksheet.Cells[1, 5].Value = "Станція ID";
+                        for (int i = 0; i < scooters.Count; i++)
+                        {
+                            worksheet.Cells[i + 2, 1].Value = scooters[i].Model;
+                            worksheet.Cells[i + 2, 2].Value = scooters[i].BatteryLevel;
+                            worksheet.Cells[i + 2, 3].Value = scooters[i].StatusId;
+                            worksheet.Cells[i + 2, 4].Value = scooters[i].CurrentLocation;
+                            worksheet.Cells[i + 2, 5].Value = scooters[i].StationId;
+                        }
+                        break;
+
+                    case "Riders":
+                        var ridersQuery = _context.Riders.AsQueryable();
+                        if (startDate.HasValue)
+                        {
+                            ridersQuery = ridersQuery.Where(r => r.RegistrationDate >= DateOnly.FromDateTime(startDate.Value));
+                        }
+                        if (endDate.HasValue)
+                        {
+                            ridersQuery = ridersQuery.Where(r => r.RegistrationDate <= DateOnly.FromDateTime(endDate.Value));
+                        }
+                        var riders = await ridersQuery.ToListAsync();
+                        worksheet.Cells[1, 1].Value = "Ім'я";
+                        worksheet.Cells[1, 2].Value = "Прізвище";
+                        worksheet.Cells[1, 3].Value = "Номер телефону";
+                        worksheet.Cells[1, 4].Value = "Дата реєстрації";
+                        worksheet.Cells[1, 5].Value = "Баланс рахунку";
+                        for (int i = 0; i < riders.Count; i++)
+                        {
+                            worksheet.Cells[i + 2, 1].Value = riders[i].FirstName;
+                            worksheet.Cells[i + 2, 2].Value = riders[i].LastName;
+                            worksheet.Cells[i + 2, 3].Value = riders[i].PhoneNumber;
+                            worksheet.Cells[i + 2, 4].Value = riders[i].RegistrationDate.ToString("yyyy-MM-dd");
+                            worksheet.Cells[i + 2, 5].Value = riders[i].AccountBalance;
+                        }
+                        break;
+
+                    case "Discounts":
+                        var discounts = await _context.Discounts.ToListAsync();
+                        worksheet.Cells[1, 1].Value = "Назва";
+                        worksheet.Cells[1, 2].Value = "Відсоток знижки";
+                        worksheet.Cells[1, 3].Value = "Опис";
+                        for (int i = 0; i < discounts.Count; i++)
+                        {
+                            worksheet.Cells[i + 2, 1].Value = discounts[i].Name;
+                            worksheet.Cells[i + 2, 2].Value = discounts[i].Percentage;
+                            worksheet.Cells[i + 2, 3].Value = discounts[i].Description;
+                        }
+                        break;
+
+                    case "Rentals":
+                        var rentalsQuery = _context.Rentals.AsQueryable();
+                        if (statusId.HasValue)
+                        {
+                            rentalsQuery = rentalsQuery.Where(r => r.StatusId == statusId.Value);
+                        }
+                        if (startDate.HasValue)
+                        {
+                            rentalsQuery = rentalsQuery.Where(r => r.StartTime >= startDate.Value);
+                        }
+                        if (endDate.HasValue)
+                        {
+                            rentalsQuery = rentalsQuery.Where(r => r.StartTime <= endDate.Value);
+                        }
+                        var rentals = await rentalsQuery.ToListAsync();
+                        worksheet.Cells[1, 1].Value = "Rider ID";
+                        worksheet.Cells[1, 2].Value = "Scooter ID";
+                        worksheet.Cells[1, 3].Value = "Status ID";
+                        worksheet.Cells[1, 4].Value = "Час початку";
+                        worksheet.Cells[1, 5].Value = "Час завершення";
+                        worksheet.Cells[1, 6].Value = "Загальна вартість";
+                        worksheet.Cells[1, 7].Value = "Дата оплати";
+                        worksheet.Cells[1, 8].Value = "Сума оплати";
+                        worksheet.Cells[1, 9].Value = "Payment Method ID";
+                        for (int i = 0; i < rentals.Count; i++)
+                        {
+                            worksheet.Cells[i + 2, 1].Value = rentals[i].RiderId;
+                            worksheet.Cells[i + 2, 2].Value = rentals[i].ScooterId;
+                            worksheet.Cells[i + 2, 3].Value = rentals[i].StatusId;
+                            worksheet.Cells[i + 2, 4].Value = rentals[i].StartTime.ToString("yyyy-MM-dd HH:mm");
+                            worksheet.Cells[i + 2, 5].Value = rentals[i].EndTime?.ToString("yyyy-MM-dd HH:mm");
+                            worksheet.Cells[i + 2, 6].Value = rentals[i].TotalCost;
+                            worksheet.Cells[i + 2, 7].Value = rentals[i].PaymentDate?.ToString("yyyy-MM-dd HH:mm");
+                            worksheet.Cells[i + 2, 8].Value = rentals[i].Amount;
+                            worksheet.Cells[i + 2, 9].Value = rentals[i].PaymentMethodId;
+                        }
+                        break;
+
+                    default:
+                        return BadRequest("Невірно вказана таблиця.");
                 }
 
                 worksheet.Cells.AutoFitColumns();
                 var stream = new MemoryStream(package.GetAsByteArray());
-                string fileName = $"ChargingStationsReport_{DateTime.Now:yyyyMMdd}.xlsx";
+                string fileName = $"{tableName}_Report_{DateTime.Now:yyyyMMdd}.xlsx";
                 string savePath = Path.Combine(ReportsDirectory, fileName);
                 System.IO.File.WriteAllBytes(savePath, stream.ToArray());
 
@@ -1267,7 +1564,7 @@ namespace ScooterInfrastructure.Controllers
 
         // POST: Імпорт з .docx
         [HttpPost]
-        public async Task<IActionResult> ImportDocx(IFormFile file)
+        public async Task<IActionResult> ImportDocx(IFormFile file, string tableName)
         {
             if (file == null || file.Length == 0)
             {
@@ -1288,37 +1585,204 @@ namespace ScooterInfrastructure.Controllers
                 string text = doc.MainDocumentPart.Document.Body.InnerText;
                 var lines = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 
-                foreach (var line in lines.Skip(1)) // Пропускаємо заголовок
+                if (lines.Length < 2)
                 {
-                    var parts = line.Split('|');
-                    if (parts.Length >= 4)
-                    {
-                        var chargingStation = new ChargingStation
-                        {
-                            Name = parts[0].Trim(),
-                            Location = parts[1].Trim(),
-                            ChargingSlots = int.TryParse(parts[2].Trim(), out int slots) ? slots : 0,
-                            CurrentScooterCount = int.TryParse(parts[3].Trim(), out int count) ? count : 0
-                        };
-
-                        if (!string.IsNullOrEmpty(chargingStation.Name) && !string.IsNullOrEmpty(chargingStation.Location))
-                        {
-                            _context.ChargingStations.Add(chargingStation);
-                        }
-                    }
+                    ModelState.AddModelError("file", "Файл порожній або не містить даних для імпорту.");
+                    return View("Index");
                 }
 
-                await _context.SaveChangesAsync();
+                switch (tableName)
+                {
+                    case "ChargingStations":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length < 4)
+                            {
+                                ModelState.AddModelError("file", $"Рядок не містить достатньої кількості полів: {line}");
+                                continue;
+                            }
+                            var chargingStation = new ChargingStation
+                            {
+                                Name = parts[0].Trim(),
+                                Location = parts[1].Trim(),
+                                ChargingSlots = int.TryParse(parts[2].Trim(), out int slots) ? slots : 0,
+                                CurrentScooterCount = int.TryParse(parts[3].Trim(), out int count) ? count : 0
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(chargingStation);
+                            if (Validator.TryValidateObject(chargingStation, validationContext, validationResults, true))
+                            {
+                                _context.ChargingStations.Add(chargingStation);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок '{line}': {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Scooters":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length < 5)
+                            {
+                                ModelState.AddModelError("file", $"Рядок не містить достатньої кількості полів: {line}");
+                                continue;
+                            }
+                            var scooter = new Scooter
+                            {
+                                Model = parts[0].Trim(),
+                                BatteryLevel = int.TryParse(parts[1].Trim(), out int level) ? level : 0,
+                                StatusId = int.TryParse(parts[2].Trim(), out int status) ? status : 1,
+                                CurrentLocation = parts[3].Trim(),
+                                StationId = int.TryParse(parts[4].Trim(), out int stationId) ? stationId : null
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(scooter);
+                            if (Validator.TryValidateObject(scooter, validationContext, validationResults, true))
+                            {
+                                _context.Scooters.Add(scooter);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок '{line}': {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Riders":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length < 5)
+                            {
+                                ModelState.AddModelError("file", $"Рядок не містить достатньої кількості полів: {line}");
+                                continue;
+                            }
+                            var rider = new Rider
+                            {
+                                FirstName = parts[0].Trim(),
+                                LastName = parts[1].Trim(),
+                                PhoneNumber = parts[2].Trim(),
+                                RegistrationDate = DateOnly.TryParse(parts[3].Trim(), out DateOnly regDate) ? regDate : DateOnly.FromDateTime(DateTime.Now),
+                                AccountBalance = decimal.TryParse(parts[4].Trim(), out decimal balance) ? balance : 0
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(rider);
+                            if (Validator.TryValidateObject(rider, validationContext, validationResults, true))
+                            {
+                                _context.Riders.Add(rider);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок '{line}': {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Discounts":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length < 3)
+                            {
+                                ModelState.AddModelError("file", $"Рядок не містить достатньої кількості полів: {line}");
+                                continue;
+                            }
+                            var discount = new Discount
+                            {
+                                Name = parts[0].Trim(),
+                                Percentage = decimal.TryParse(parts[1].Trim(), out decimal percentage) ? percentage : 0,
+                                Description = parts[2].Trim()
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(discount);
+                            if (Validator.TryValidateObject(discount, validationContext, validationResults, true))
+                            {
+                                _context.Discounts.Add(discount);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок '{line}': {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    case "Rentals":
+                        foreach (var line in lines.Skip(1))
+                        {
+                            var parts = line.Split('|');
+                            if (parts.Length < 9)
+                            {
+                                ModelState.AddModelError("file", $"Рядок не містить достатньої кількості полів: {line}");
+                                continue;
+                            }
+                            var rental = new Rental
+                            {
+                                RiderId = int.TryParse(parts[0].Trim(), out int riderId) ? riderId : 0,
+                                ScooterId = int.TryParse(parts[1].Trim(), out int scooterId) ? scooterId : 0,
+                                StatusId = int.TryParse(parts[2].Trim(), out int statusId) ? statusId : 1,
+                                StartTime = DateTime.TryParse(parts[3].Trim(), out DateTime start) ? start : DateTime.Now,
+                                EndTime = DateTime.TryParse(parts[4].Trim(), out DateTime end) ? end : null,
+                                TotalCost = decimal.TryParse(parts[5].Trim(), out decimal cost) ? cost : 0,
+                                PaymentDate = DateTime.TryParse(parts[6].Trim(), out DateTime payDate) ? payDate : null,
+                                Amount = decimal.TryParse(parts[7].Trim(), out decimal amount) ? amount : null,
+                                PaymentMethodId = int.TryParse(parts[8].Trim(), out int payMethod) ? payMethod : null
+                            };
+
+                            var validationResults = new List<ValidationResult>();
+                            var validationContext = new ValidationContext(rental);
+                            if (Validator.TryValidateObject(rental, validationContext, validationResults, true))
+                            {
+                                _context.Rentals.Add(rental);
+                            }
+                            else
+                            {
+                                foreach (var error in validationResults)
+                                {
+                                    ModelState.AddModelError("", $"Рядок '{line}': {error.ErrorMessage}");
+                                }
+                            }
+                        }
+                        break;
+
+                    default:
+                        ModelState.AddModelError("tableName", "Невірно вказана таблиця.");
+                        return View("Index");
+                }
+
+                if (ModelState.IsValid)
+                {
+                    await _context.SaveChangesAsync();
+                    return RedirectToAction("Index", tableName);
+                }
             }
 
-            return RedirectToAction("Index", "ChargingStations");
+            return View("Index");
         }
 
-        // GET: Експорт у .docx
-        public async Task<IActionResult> ExportDocx()
+        [HttpGet]
+        public async Task<IActionResult> ExportDocx(string tableName)
         {
-            var stations = await _context.ChargingStations.ToListAsync();
-            string fileName = $"ChargingStationsReport_{DateTime.Now:yyyyMMdd}.docx";
+            string fileName = $"{tableName}_Report_{DateTime.Now:yyyyMMdd}.docx";
             string savePath = Path.Combine(ReportsDirectory, fileName);
 
             using (WordprocessingDocument doc = WordprocessingDocument.Create(savePath, WordprocessingDocumentType.Document))
@@ -1329,13 +1793,62 @@ namespace ScooterInfrastructure.Controllers
 
                 Paragraph title = body.AppendChild(new Paragraph());
                 Run titleRun = title.AppendChild(new Run());
-                titleRun.AppendChild(new Text("Звіт про станції зарядки"));
+                titleRun.AppendChild(new Text($"Звіт по {tableName}"));
 
-                foreach (var station in stations)
+                switch (tableName)
                 {
-                    Paragraph para = body.AppendChild(new Paragraph());
-                    Run run = para.AppendChild(new Run());
-                    run.AppendChild(new Text($"{station.Name} | {station.Location} | {station.ChargingSlots} | {station.CurrentScooterCount}"));
+                    case "ChargingStations":
+                        var stations = await _context.ChargingStations.ToListAsync();
+                        foreach (var station in stations)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{station.Name} | {station.Location} | {station.ChargingSlots} | {station.CurrentScooterCount}"));
+                        }
+                        break;
+
+                    case "Scooters":
+                        var scooters = await _context.Scooters.ToListAsync();
+                        foreach (var scooter in scooters)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{scooter.Model} | {scooter.BatteryLevel} | {scooter.StatusId} | {scooter.CurrentLocation} | {scooter.StationId}"));
+                        }
+                        break;
+
+                    case "Riders":
+                        var riders = await _context.Riders.ToListAsync();
+                        foreach (var rider in riders)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{rider.FirstName} | {rider.LastName} | {rider.PhoneNumber} | {rider.RegistrationDate} | {rider.AccountBalance}"));
+                        }
+                        break;
+
+                    case "Discounts":
+                        var discounts = await _context.Discounts.ToListAsync();
+                        foreach (var discount in discounts)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{discount.Name} | {discount.Percentage} | {discount.Description}"));
+                        }
+                        break;
+
+                    case "Rentals":
+                        var rentals = await _context.Rentals.ToListAsync();
+                        foreach (var rental in rentals)
+                        {
+                            Paragraph para = body.AppendChild(new Paragraph());
+                            Run run = para.AppendChild(new Run());
+                            run.AppendChild(new Text($"{rental.RiderId} | {rental.ScooterId} | {rental.StatusId} | {rental.StartTime:yyyy-MM-dd HH:mm} | {rental.EndTime:yyyy-MM-dd HH:mm} | {rental.TotalCost} | {rental.PaymentDate:yyyy-MM-dd HH:mm} | {rental.Amount} | {rental.PaymentMethodId}"));
+                        }
+                        break;
+
+                    default:
+                        return BadRequest("Невірно вказана таблиця.");
                 }
             }
 
@@ -2054,13 +2567,7 @@ namespace ScooterInfrastructure.Models
     <a asp-action="Create">Додати нову станцію</a>
 </p>
 
-<!-- Діаграма: Кількість самокатів на станціях зарядки -->
-<div class="row mb-4">
-    <div class="col-md-8 offset-md-2">
-        <h2>Кількість самокатів на станціях зарядки</h2>
-        <div id="scootersByStationChart" style="width: 100%; height: 400px;"></div>
-    </div>
-</div>
+
 
 <table class="table">
     <thead>
@@ -2107,36 +2614,7 @@ namespace ScooterInfrastructure.Models
 </table>
 
 @section Scripts {
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-        google.charts.load('current', { 'packages': ['corechart'] });
-        google.charts.setOnLoadCallback(drawScootersChart);
-
-        function drawScootersChart() {
-            fetch('/api/charts/scootersByStation')
-                .then(response => response.json())
-                .then(data => {
-                    var dataTable = new google.visualization.DataTable();
-                    dataTable.addColumn('string', 'Станція');
-                    dataTable.addColumn('number', 'Кількість самокатів');
-
-                    data.forEach(item => {
-                        dataTable.addRow([item.stationName, item.count]);
-                    });
-
-                    var options = {
-                        title: 'Кількість самокатів на станціях зарядки',
-                        width: '100%',
-                        height: 400,
-                        legend: { position: 'none' }
-                    };
-
-                    var chart = new google.visualization.ColumnChart(document.getElementById('scootersByStationChart'));
-                    chart.draw(dataTable, options);
-                })
-                .catch(error => console.error('Помилка завантаження даних:', error));
-        }
-    </script>
+ 
 }
 
 // ==== Views\Discounts\Create.cshtml ====
@@ -2436,11 +2914,23 @@ namespace ScooterInfrastructure.Models
     </div>
 </div>
 
-<!-- Діаграма: Розподіл самокатів за статусами -->
+<!-- Діаграми -->
 <div class="row mt-5">
-    <div class="col-md-6 offset-md-3">
-        <h2>Розподіл самокатів за статусами</h2>
-        <div id="scootersByStatusChart" style="width: 100%; height: 400px;"></div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">Розподіл самокатів за статусами</div>
+            <div class="card-body">
+                <div id="scootersByStatusChart" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">Самокати на станціях зарядки</div>
+            <div class="card-body">
+                <div id="scootersByStationChart" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2499,28 +2989,61 @@ namespace ScooterInfrastructure.Models
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
         google.charts.load('current', { 'packages': ['corechart'] });
-        google.charts.setOnLoadCallback(drawScootersChart);
+        google.charts.setOnLoadCallback(drawCharts);
 
-        function drawScootersChart() {
+        function drawCharts() {
+            // Діаграма 1: Самокати за статусами (кругова діаграма)
             fetch('/api/charts/scootersByStatus')
                 .then(response => response.json())
                 .then(data => {
                     var dataTable = new google.visualization.DataTable();
                     dataTable.addColumn('string', 'Статус');
                     dataTable.addColumn('number', 'Кількість');
-
                     data.forEach(item => {
                         dataTable.addRow([item.status, item.count]);
                     });
 
                     var options = {
                         title: 'Розподіл самокатів за статусами',
-                        pieHole: 0.4,
+                        pieHole: 0.4, // Стиль "пончика"
                         width: '100%',
-                        height: 400
+                        height: 400,
+                        colors: ['#3498db', '#2ecc71', '#e74c3c'], // Кастомні кольори (синій, зелений, червоний)
+                        chartArea: { width: '80%', height: '70%' }, // Збільшуємо область діаграми
+                        legend: { position: 'right', textStyle: { fontSize: 14 } }, // Легенда справа
+                        animation: { startup: true, duration: 1000, easing: 'out' } // Анімація
                     };
 
                     var chart = new google.visualization.PieChart(document.getElementById('scootersByStatusChart'));
+                    chart.draw(dataTable, options);
+                })
+                .catch(error => console.error('Помилка завантаження даних:', error));
+
+            // Діаграма 2: Самокати на станціях (стовпчикова діаграма)
+            fetch('/api/charts/scootersByStation')
+                .then(response => response.json())
+                .then(data => {
+                    var dataTable = new google.visualization.DataTable();
+                    dataTable.addColumn('string', 'Станція');
+                    dataTable.addColumn('number', 'Кількість');
+                    data.forEach(item => {
+                        dataTable.addRow([item.stationName, item.count]);
+                    });
+
+                    var options = {
+                        title: 'Кількість самокатів на станціях',
+                        width: '100%',
+                        height: 400,
+                        colors: ['#3498db'], // Синій колір для стовпчиків
+                        bar: { groupWidth: '50%' }, // Товщина стовпчиків
+                        chartArea: { width: '70%', height: '70%' }, // Збільшуємо область
+                        legend: { position: 'none' }, // Без легенди
+                        hAxis: { textStyle: { fontSize: 12 }, slantedText: true, slantedTextAngle: 45 }, // Нахилені підписи
+                        vAxis: { minValue: 0, gridlines: { color: '#ddd' } }, // Сітка
+                        animation: { startup: true, duration: 1000, easing: 'out' } // Анімація
+                    };
+
+                    var chart = new google.visualization.ColumnChart(document.getElementById('scootersByStationChart'));
                     chart.draw(dataTable, options);
                 })
                 .catch(error => console.error('Помилка завантаження даних:', error));
@@ -2965,6 +3488,9 @@ namespace ScooterInfrastructure.Models
                         <select name="tableName" class="form-control">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
+                            <option value="Riders">Користувачі</option>
+                            <option value="Discounts">Знижки</option>
+                            <option value="Rentals">Оренди</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -2992,6 +3518,26 @@ namespace ScooterInfrastructure.Models
                             <option value="Rentals">Оренди</option>
                         </select>
                     </div>
+                    <!-- Фільтр за статусом для Scooters і Rentals -->
+                    <div class="form-group">
+                        <label>Фільтр за статусом (для Скутерів та Оренд):</label>
+                        <select name="statusId" class="form-control">
+                            <option value="">Всі</option>
+                            <!-- Для Scooters -->
+                            <option value="1">Доступний (Скутери) / Активна (Оренди)</option>
+                            <option value="2">Зайнятий (Скутери) / Завершена (Оренди)</option>
+                            <option value="3">На зарядці (Скутери) / Скасована (Оренди)</option>
+                        </select>
+                    </div>
+                    <!-- Фільтр за датою для Riders і Rentals -->
+                    <div class="form-group">
+                        <label>Дата початку (для Користувачів та Оренд):</label>
+                        <input type="datetime-local" name="startDate" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Дата закінчення (для Користувачів та Оренд):</label>
+                        <input type="datetime-local" name="endDate" class="form-control" />
+                    </div>
                     <button type="submit" class="btn btn-success">Експортувати</button>
                 </form>
 
@@ -3004,6 +3550,9 @@ namespace ScooterInfrastructure.Models
                         <select name="tableName" class="form-control">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
+                            <option value="Riders">Користувачі</option>
+                            <option value="Discounts">Знижки</option>
+                            <option value="Rentals">Оренди</option>
                         </select>
                     </div>
                     <button type="submit" class="btn btn-success">Експортувати</button>
@@ -3830,4 +4379,266 @@ button.accept-policy {
 <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
 <script src="~/lib/jquery-validation-unobtrusive/dist/jquery.validate.unobtrusive.min.js"></script>
 
+
+// ==== wwwroot\css\site.css ====
+/* �������� ���� */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #2c3e50;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* ��������� ��������� ������ ������ */
+}
+
+/* ������������, �� ����� ������ ����� */
+main {
+    flex-grow: 1; /* �������� ���� ����������� */
+}
+
+.footer {
+    flex-shrink: 0; /* ����� �� ���������� */
+    width: 100%;
+    background: linear-gradient(90deg, #2c3e50, #3498db);
+    color: #ecf0f1;
+    padding: 20px 0;
+    border-top: 4px solid #1abc9c;
+    text-align: center;
+}
+
+/* �������� */
+.navbar {
+    background: linear-gradient(90deg, #2c3e50, #3498db);
+    padding: 15px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ecf0f1 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.nav-link {
+    color: #ecf0f1 !important;
+    font-size: 16px;
+    margin-left: 20px;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+    .nav-link:hover {
+        color: #1abc9c !important;
+        transform: translateY(-2px);
+    }
+
+/* ��������� */
+.container {
+    max-width: 1200px;
+    padding: 20px;
+    margin: 0 auto;
+}
+
+/* ��������� */
+h1 {
+    font-size: 32px;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 700;
+}
+
+h4 {
+    color: #3498db;
+    font-size: 22px;
+    margin-bottom: 15px;
+}
+
+/* ������ */
+.btn-primary {
+    background-color: #1abc9c;
+    border-color: #1abc9c;
+    padding: 10px 20px;
+    border-radius: 25px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+    .btn-primary:hover {
+        background-color: #16a085;
+        border-color: #16a085;
+        transform: scale(1.05);
+    }
+
+.btn-danger {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+    border-radius: 25px;
+}
+
+    .btn-danger:hover {
+        background-color: #c0392b;
+        border-color: #c0392b;
+    }
+
+/* ������� */
+.table {
+    background-color: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    margin: 20px 0;
+}
+
+    .table th {
+        background-color: #3498db;
+        color: #fff;
+        padding: 15px;
+        font-weight: 600;
+        text-align: left;
+    }
+
+    .table td {
+        padding: 15px;
+        vertical-align: middle;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .table tr:hover {
+        background-color: #ecf0f1;
+        transition: background-color 0.2s ease;
+    }
+
+/* ����� */
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+.form-control {
+    border-radius: 8px;
+    border: 1px solid #bdc3c7;
+    padding: 10px;
+    transition: border-color 0.3s ease;
+}
+
+    .form-control:focus {
+        border-color: #1abc9c;
+        box-shadow: 0 0 5px rgba(26, 188, 156, 0.3);
+    }
+
+.text-danger {
+    font-size: 14px;
+    margin-top: 5px;
+    color: #e74c3c;
+}
+
+.footer a {
+    color: #1abc9c;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+    .footer a:hover {
+        color: #16a085;
+    }
+
+/* ����� (���������������� �� �������� �������) */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+.card-header {
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.card-title {
+    color: #2c3e50;
+}
+
+/* �������� (��������������� ��� ������) */
+.carousel-inner {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+blockquote {
+    font-style: italic;
+    color: #7f8c8d;
+}
+
+/* �������� (������ �� ������) */
+.list-unstyled li {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.list-unstyled i {
+    margin-right: 10px;
+    color: #1abc9c;
+}
+
+/* �������� */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.container, .navbar, .footer {
+    animation: fadeIn 1s ease-in;
+}
+
+/* �������� ���� */
+p {
+    margin-bottom: 15px;
+}
+
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+
+// ==== wwwroot\js\site.js ====
+$(document).ready(function () {
+    // Перевизначаємо метод валідації чисел
+    $.validator.methods.number = function (value, element) {
+        // Дозволяємо як кому, так і крапку як роздільник
+        return this.optional(element) || !isNaN(parseFloat(value.replace(',', '.')));
+    };
+
+    // Оновлюємо правила валідації для всіх форм
+    $.validator.unobtrusive.parse();
+});
 

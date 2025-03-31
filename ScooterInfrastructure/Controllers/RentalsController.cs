@@ -91,7 +91,6 @@ namespace ScooterInfrastructure.Controllers
             ModelState.Remove("Scooter");
             ModelState.Remove("Status");
 
-            // Явна валідація моделі
             var validationResults = new List<ValidationResult>();
             var validationContext = new ValidationContext(rental);
             if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))

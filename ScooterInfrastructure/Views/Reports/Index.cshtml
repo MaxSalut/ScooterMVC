@@ -14,7 +14,7 @@
                 <form asp-action="ImportExcel" method="post" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>Виберіть таблицю:</label>
-                        <select name="tableName" class="form-control">
+                        <select name="tableName" class="form-control" id="tableSelectImportExcel" onchange="filterImportForm('ImportExcel')">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
                             <option value="Riders">Користувачі</option>
@@ -25,6 +25,39 @@
                     <div class="form-group">
                         <input type="file" name="file" class="form-control" accept=".xlsx" />
                     </div>
+                    <div id="importExcelFilters" style="display:none;">
+                        <!-- Фільтри для Scooters -->
+                        <div id="scooterImportFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Скутерів):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Доступний</option>
+                                <option value="2">Зайнятий</option>
+                                <option value="3">На зарядці</option>
+                            </select>
+                        </div>
+                        <!-- Фільтри для Riders -->
+                        <div id="riderImportFilter" style="display:none;">
+                            <label>Дата початку (для Користувачів):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Користувачів):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
+                        <!-- Фільтри для Rentals -->
+                        <div id="rentalImportFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Оренд):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Активна</option>
+                                <option value="2">Завершена</option>
+                                <option value="3">Скасована</option>
+                            </select>
+                            <label>Дата початку (для Оренд):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Оренд):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
+                    </div>
                     <button type="submit" class="btn btn-primary">Імпортувати</button>
                 </form>
 
@@ -34,7 +67,7 @@
                 <form asp-action="ImportDocx" method="post" enctype="multipart/form-data">
                     <div class="form-group">
                         <label>Виберіть таблицю:</label>
-                        <select name="tableName" class="form-control">
+                        <select name="tableName" class="form-control" id="tableSelectImportDocx" onchange="filterImportForm('ImportDocx')">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
                             <option value="Riders">Користувачі</option>
@@ -44,6 +77,39 @@
                     </div>
                     <div class="form-group">
                         <input type="file" name="file" class="form-control" accept=".docx" />
+                    </div>
+                    <div id="importDocxFilters" style="display:none;">
+                        <!-- Фільтри для Scooters -->
+                        <div id="scooterImportDocxFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Скутерів):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Доступний</option>
+                                <option value="2">Зайнятий</option>
+                                <option value="3">На зарядці</option>
+                            </select>
+                        </div>
+                        <!-- Фільтри для Riders -->
+                        <div id="riderImportDocxFilter" style="display:none;">
+                            <label>Дата початку (для Користувачів):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Користувачів):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
+                        <!-- Фільтри для Rentals -->
+                        <div id="rentalImportDocxFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Оренд):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Активна</option>
+                                <option value="2">Завершена</option>
+                                <option value="3">Скасована</option>
+                            </select>
+                            <label>Дата початку (для Оренд):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Оренд):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary">Імпортувати</button>
                 </form>
@@ -59,13 +125,46 @@
                 <form asp-action="ExportExcel" method="get">
                     <div class="form-group">
                         <label>Виберіть таблицю:</label>
-                        <select name="tableName" class="form-control">
+                        <select name="tableName" class="form-control" id="tableSelectExportExcel" onchange="filterExportForm('ExportExcel')">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
                             <option value="Riders">Користувачі</option>
                             <option value="Discounts">Знижки</option>
                             <option value="Rentals">Оренди</option>
                         </select>
+                    </div>
+                    <div id="exportExcelFilters" style="display:none;">
+                        <!-- Фільтри для Scooters -->
+                        <div id="scooterExportFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Скутерів):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Доступний</option>
+                                <option value="2">Зайнятий</option>
+                                <option value="3">На зарядці</option>
+                            </select>
+                        </div>
+                        <!-- Фільтри для Riders -->
+                        <div id="riderExportFilter" style="display:none;">
+                            <label>Дата початку (для Користувачів):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Користувачів):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
+                        <!-- Фільтри для Rentals -->
+                        <div id="rentalExportFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Оренд):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Активна</option>
+                                <option value="2">Завершена</option>
+                                <option value="3">Скасована</option>
+                            </select>
+                            <label>Дата початку (для Оренд):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Оренд):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-success">Експортувати</button>
                 </form>
@@ -76,13 +175,46 @@
                 <form asp-action="ExportDocx" method="get">
                     <div class="form-group">
                         <label>Виберіть таблицю:</label>
-                        <select name="tableName" class="form-control">
+                        <select name="tableName" class="form-control" id="tableSelectExportDocx" onchange="filterExportForm('ExportDocx')">
                             <option value="ChargingStations">Станції</option>
                             <option value="Scooters">Скутери</option>
                             <option value="Riders">Користувачі</option>
                             <option value="Discounts">Знижки</option>
                             <option value="Rentals">Оренди</option>
                         </select>
+                    </div>
+                    <div id="exportDocxFilters" style="display:none;">
+                        <!-- Фільтри для Scooters -->
+                        <div id="scooterExportDocxFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Скутерів):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Доступний</option>
+                                <option value="2">Зайнятий</option>
+                                <option value="3">На зарядці</option>
+                            </select>
+                        </div>
+                        <!-- Фільтри для Riders -->
+                        <div id="riderExportDocxFilter" style="display:none;">
+                            <label>Дата початку (для Користувачів):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Користувачів):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
+                        <!-- Фільтри для Rentals -->
+                        <div id="rentalExportDocxFilter" style="display:none;">
+                            <label>Фільтр за статусом (для Оренд):</label>
+                            <select name="statusId" class="form-control">
+                                <option value="">Всі</option>
+                                <option value="1">Активна</option>
+                                <option value="2">Завершена</option>
+                                <option value="3">Скасована</option>
+                            </select>
+                            <label>Дата початку (для Оренд):</label>
+                            <input type="datetime-local" name="startDate" class="form-control" />
+                            <label>Дата закінчення (для Оренд):</label>
+                            <input type="datetime-local" name="endDate" class="form-control" />
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-success">Експортувати</button>
                 </form>
@@ -99,4 +231,62 @@
             <p>@error.ErrorMessage</p>
         }
     </div>
+}
+
+@section Scripts {
+    <script>
+        function filterImportForm(formType) {
+            var tableSelect = document.getElementById(formType === 'ImportExcel' ? 'tableSelectImportExcel' : 'tableSelectImportDocx');
+            var selectedTable = tableSelect.value;
+            var filtersDiv = document.getElementById(formType === 'ImportExcel' ? 'importExcelFilters' : 'importDocxFilters');
+
+            // Приховуємо всі фільтри
+            document.querySelectorAll('#' + (formType === 'ImportExcel' ? 'importExcelFilters' : 'importDocxFilters') + ' > div').forEach(function(filter) {
+                filter.style.display = 'none';
+            });
+
+            // Показуємо відповідні фільтри залежно від вибраної таблиці
+            if (selectedTable === 'Scooters') {
+                document.getElementById(formType === 'ImportExcel' ? 'scooterImportFilter' : 'scooterImportDocxFilter').style.display = 'block';
+            } else if (selectedTable === 'Riders') {
+                document.getElementById(formType === 'ImportExcel' ? 'riderImportFilter' : 'riderImportDocxFilter').style.display = 'block';
+            } else if (selectedTable === 'Rentals') {
+                document.getElementById(formType === 'ImportExcel' ? 'rentalImportFilter' : 'rentalImportDocxFilter').style.display = 'block';
+            }
+
+            // Показуємо блок фільтрів, якщо є що показати
+            filtersDiv.style.display = (selectedTable === 'ChargingStations' || selectedTable === 'Discounts') ? 'none' : 'block';
+        }
+
+        function filterExportForm(formType) {
+            var tableSelect = document.getElementById(formType === 'ExportExcel' ? 'tableSelectExportExcel' : 'tableSelectExportDocx');
+            var selectedTable = tableSelect.value;
+            var filtersDiv = document.getElementById(formType === 'ExportExcel' ? 'exportExcelFilters' : 'exportDocxFilters');
+
+            // Приховуємо всі фільтри
+            document.querySelectorAll('#' + (formType === 'ExportExcel' ? 'exportExcelFilters' : 'exportDocxFilters') + ' > div').forEach(function(filter) {
+                filter.style.display = 'none';
+            });
+
+            // Показуємо відповідні фільтри залежно від вибраної таблиці
+            if (selectedTable === 'Scooters') {
+                document.getElementById(formType === 'ExportExcel' ? 'scooterExportFilter' : 'scooterExportDocxFilter').style.display = 'block';
+            } else if (selectedTable === 'Riders') {
+                document.getElementById(formType === 'ExportExcel' ? 'riderExportFilter' : 'riderExportDocxFilter').style.display = 'block';
+            } else if (selectedTable === 'Rentals') {
+                document.getElementById(formType === 'ExportExcel' ? 'rentalExportFilter' : 'rentalExportDocxFilter').style.display = 'block';
+            }
+
+            // Показуємо блок фільтрів, якщо є що показати
+            filtersDiv.style.display = (selectedTable === 'ChargingStations' || selectedTable === 'Discounts') ? 'none' : 'block';
+        }
+
+        // Ініціалізація фільтрів при завантаженні сторінки
+        window.onload = function() {
+            filterImportForm('ImportExcel');
+            filterImportForm('ImportDocx');
+            filterExportForm('ExportExcel');
+            filterExportForm('ExportDocx');
+        };
+    </script>
 }
