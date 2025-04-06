@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization; // Додано для авторизації
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +21,14 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Discounts
+        [Authorize(Roles = "User,Admin")] // Доступ для User і Admin
         public async Task<IActionResult> Index()
         {
             return View(await _context.Discounts.ToListAsync());
         }
 
         // GET: Discounts/Details/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -44,16 +47,16 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Discounts/Create
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public IActionResult Create()
         {
             return View();
         }
 
         // POST: Discounts/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Create([Bind("Name,Percentage,Description,Id")] Discount discount)
         {
             if (ModelState.IsValid)
@@ -66,6 +69,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Discounts/Edit/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -82,10 +86,9 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Discounts/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int id, [Bind("Name,Percentage,Description,Id")] Discount discount)
         {
             if (id != discount.Id)
@@ -117,6 +120,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Discounts/Delete/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -137,6 +141,7 @@ namespace ScooterInfrastructure.Controllers
         // POST: Discounts/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var discount = await _context.Discounts.FindAsync(id);

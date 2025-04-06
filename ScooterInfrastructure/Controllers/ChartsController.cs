@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization; // Додано для авторизації
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ScooterInfrastructure;
 
@@ -6,6 +7,7 @@ namespace ScooterInfrastructure.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin")] // Обмеження доступу до всього контролера для Admin
     public class ChartsController : ControllerBase
     {
         private readonly ScootersContext _context;

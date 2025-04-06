@@ -15,7 +15,6 @@ namespace ScooterInfrastructure.Controllers
 
         public IActionResult Index()
         {
-            // Статистика для головної сторінки
             ViewBag.AvailableScooters = _context.Scooters.Count(s => s.Status.Name == "Доступний");
             ViewBag.ChargingStationsCount = _context.ChargingStations.Count();
             ViewBag.ActiveRentals = _context.Rentals.Count(r => r.StatusId == 1);

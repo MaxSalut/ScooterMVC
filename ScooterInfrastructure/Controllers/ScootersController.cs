@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization; // Додано для авторизації
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -20,13 +21,22 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Scooters
+        [Authorize(Roles = "User,Admin")] // Доступ для User і Admin
         public async Task<IActionResult> Index()
         {
-            var scootersContext = _context.Scooters.Include(s => s.Station).Include(s => s.Status);
+            var scootersQuery = _context.Scooters.AsQueryable();
+            if (!User.IsInRole("Admin"))
+            {
+                scootersQuery = scootersQuery.Where(s => s.StatusId == 1);
+            }
+            var scootersContext = scootersQuery
+                .Include(s => s.Station)
+                .Include(s => s.Status);
             return View(await scootersContext.ToListAsync());
         }
 
         // GET: Scooters/Details/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -47,6 +57,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Scooters/Create
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public IActionResult Create()
         {
             ViewData["StationId"] = new SelectList(_context.ChargingStations, "Id", "Location");
@@ -55,17 +66,15 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Scooters/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Create([Bind("Model,BatteryLevel,StatusId,CurrentLocation,StationId,Id")] Scooter scooter)
         {
-            ModelState.Remove("Station"); 
-            ModelState.Remove("Status"); 
+            ModelState.Remove("Station");
+            ModelState.Remove("Status");
             if (ModelState.IsValid)
             {
-                // Ensure StatusId is valid and fetch the corresponding ScooterStatus
                 var status = await _context.ScooterStatuses.FindAsync(scooter.StatusId);
                 if (status == null)
                 {
@@ -76,7 +85,6 @@ namespace ScooterInfrastructure.Controllers
                     scooter.Status = status;
                 }
 
-                // Ensure StationId is valid and fetch the corresponding ChargingStation
                 if (scooter.StationId.HasValue)
                 {
                     var station = await _context.ChargingStations.FindAsync(scooter.StationId);
@@ -98,7 +106,6 @@ namespace ScooterInfrastructure.Controllers
                 }
             }
 
-            // Log or inspect validation errors
             foreach (var state in ModelState)
             {
                 foreach (var error in state.Value.Errors)
@@ -113,6 +120,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Scooters/Edit/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -131,10 +139,9 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Scooters/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int id, [Bind("Model,BatteryLevel,StatusId,CurrentLocation,StationId,Id")] Scooter scooter)
         {
             if (id != scooter.Id)
@@ -169,6 +176,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Scooters/Delete/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -191,6 +199,7 @@ namespace ScooterInfrastructure.Controllers
         // POST: Scooters/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var scooter = await _context.Scooters.FindAsync(id);

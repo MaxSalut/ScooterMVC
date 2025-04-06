@@ -1,6 +1,7 @@
 ﻿using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
+using Microsoft.AspNetCore.Authorization; // Додано для авторизації
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -15,6 +16,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ScooterInfrastructure.Controllers
 {
+    [Authorize(Roles = "Admin")] // Обмеження доступу до всього контролера для Admin
     public partial class ReportsController : Controller
     {
         #region ImportDocx
@@ -38,7 +40,6 @@ namespace ScooterInfrastructure.Controllers
             using var doc = WordprocessingDocument.Open(savePath, false);
             var body = doc.MainDocumentPart.Document.Body;
 
-            // Знаходимо першу таблицю
             var table = body.Elements<Table>().FirstOrDefault();
             if (table == null)
             {
@@ -46,7 +47,6 @@ namespace ScooterInfrastructure.Controllers
                 return View("Index");
             }
 
-            // Пропускаємо заголовки (перший рядок) і отримуємо дані
             var dataRows = table.Elements<TableRow>().Skip(1).ToList();
             if (!dataRows.Any())
             {

@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using System.Security.Claims; // Додано для доступу до ідентифікатора користувача
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization; // Додано для авторизації
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -17,23 +19,42 @@ namespace ScooterInfrastructure.Controllers
 
         public RentalsController(ScootersContext context)
         {
-            _context = context; 
+            _context = context;
         }
-        
+
         // GET: Rentals
+        [Authorize(Roles = "User,Admin")] // Доступ для User і Admin
         public async Task<IActionResult> Index(int? id, string firstName, string lastName)
         {
-            if (id == null)
+            var rentalsQuery = _context.Rentals.AsQueryable();
+
+            if (!User.IsInRole("Admin"))
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var rider = await _context.Riders.FirstOrDefaultAsync(r => r.ApplicationUserId == userId);
+                if (rider == null)
+                {
+                    return Forbid(); // Користувач не пов'язаний із Rider
+                }
+                rentalsQuery = rentalsQuery.Where(r => r.RiderId == rider.Id);
+                id = rider.Id; // Використовуємо ідентифікатор rider для передачі у View
+                firstName = rider.FirstName;
+                lastName = rider.LastName;
+            }
+            else if (id == null)
             {
                 return NotFound();
             }
+            else
+            {
+                rentalsQuery = rentalsQuery.Where(r => r.RiderId == id);
+            }
 
-            var scootersContext = _context.Rentals
+            var scootersContext = rentalsQuery
                 .Include(r => r.PaymentMethod)
                 .Include(r => r.Rider)
                 .Include(r => r.Scooter)
-                .Include(r => r.Status)
-                .Where(r => r.RiderId == id);
+                .Include(r => r.Status);
 
             ViewBag.RiderId = id; // Додаємо для передачі в Create
             ViewBag.FirstName = firstName;
@@ -41,8 +62,8 @@ namespace ScooterInfrastructure.Controllers
 
             return View(await scootersContext.ToListAsync());
         }
-
         // GET: Rentals/Details/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -65,6 +86,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Rentals/Create
+        [Authorize(Roles = "User,Admin")] // Доступ для User і Admin
         public IActionResult Create()
         {
             ViewData["PaymentMethodId"] = new SelectList(_context.PaymentMethods, "Id", "Name");
@@ -75,15 +97,32 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Rentals/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-[ValidateAntiForgeryToken]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "User,Admin")] // Доступ для User і Admin
         public async Task<IActionResult> Create([Bind("RiderId,ScooterId,StatusId,StartTime,EndTime,TotalCost,PaymentDate,Amount,PaymentMethodId,Id")] Rental rental)
         {
             if (rental == null)
             {
                 return BadRequest("Модель оренди не може бути null.");
+            }
+
+            if (!User.IsInRole("Admin"))
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var rider = await _context.Riders.FirstOrDefaultAsync(r => r.ApplicationUserId == userId);
+                if (rider != null)
+                {
+                    rental.RiderId = rider.Id; // Автоматично встановлюємо RiderId для User
+                }
+                else
+                {
+                    return Forbid(); // Користувач не пов'язаний із Rider
+                }
+            }
+            else if (rental.RiderId == 0)
+            {
+                ModelState.AddModelError("RiderId", "RiderId є обов'язковим для адміністратора.");
             }
 
             ModelState.Remove("PaymentMethod");
@@ -116,6 +155,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Rentals/Edit/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -136,10 +176,9 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: Rentals/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Edit(int id, [Bind("RiderId,ScooterId,StatusId,StartTime,EndTime,TotalCost,PaymentDate,Amount,PaymentMethodId,Id")] Rental rental)
         {
             if (id != rental.Id)
@@ -152,7 +191,6 @@ namespace ScooterInfrastructure.Controllers
             ModelState.Remove("Scooter");
             ModelState.Remove("Status");
 
-            // Явна валідація моделі
             var validationResults = new List<ValidationResult>();
             var validationContext = new ValidationContext(rental);
             if (!Validator.TryValidateObject(rental, validationContext, validationResults, true))
@@ -192,6 +230,7 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // GET: Rentals/Delete/5
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -216,6 +255,7 @@ namespace ScooterInfrastructure.Controllers
         // POST: Rentals/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")] // Лише для Admin
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var rental = await _context.Rentals.FindAsync(id);

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization; // Додано для авторизації
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using ScooterInfrastructure;
 
 namespace ScooterInfrastructure.Controllers
 {
+    [Authorize(Roles = "Admin")] // Обмеження доступу до всього контролера для Admin
     public class ChargingStationsController : Controller
     {
         private readonly ScootersContext _context;
@@ -50,8 +52,6 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: ChargingStations/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Name,Location,ChargingSlots,CurrentScooterCount,Id")] ChargingStation chargingStation)
@@ -82,8 +82,6 @@ namespace ScooterInfrastructure.Controllers
         }
 
         // POST: ChargingStations/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Name,Location,ChargingSlots,CurrentScooterCount,Id")] ChargingStation chargingStation)

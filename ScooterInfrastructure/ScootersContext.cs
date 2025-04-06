@@ -2,11 +2,11 @@
 using ScooterDomain.Model;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace ScooterInfrastructure;
 
-
-public partial class ScootersContext : DbContext
+public partial class ScootersContext : IdentityDbContext<ApplicationUser>
 {
     public ScootersContext()
     {
@@ -18,27 +18,31 @@ public partial class ScootersContext : DbContext
     }
 
     public virtual DbSet<ChargingStation> ChargingStations { get; set; }
-
     public virtual DbSet<Discount> Discounts { get; set; }
-
     public virtual DbSet<PaymentMethod> PaymentMethods { get; set; }
-
     public virtual DbSet<Rental> Rentals { get; set; }
-
     public virtual DbSet<RentalStatus> RentalStatuses { get; set; }
-
     public virtual DbSet<Rider> Riders { get; set; }
-
     public virtual DbSet<Scooter> Scooters { get; set; }
-
     public virtual DbSet<ScooterStatus> ScooterStatuses { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=DESKTOP-4H0AUGU\\SQLEXPRESS; Database=Scooters; Trusted_Connection=True; TrustServerCertificate=True; ");
+        optionsBuilder.UseSqlServer("Server=DESKTOP-4H0AUGU\\SQLEXPRESS; Database=Scooters; Trusted_Connection=True; TrustServerCertificate=True;");
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // Для коректної роботи Identity
+
+        // Налаштування зв’язку між Rider і ApplicationUser
+        modelBuilder.Entity<Rider>()
+            .HasOne(r => r.ApplicationUser)        // Rider має одного ApplicationUser
+            .WithOne(u => u.Rider)                // ApplicationUser має одного Rider
+            .HasForeignKey<Rider>(r => r.ApplicationUserId) // Зовнішній ключ
+            .OnDelete(DeleteBehavior.Cascade);    // Каскадне видалення
+
         modelBuilder.Entity<ChargingStation>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Charging__3214EC0740E33A38");
@@ -49,6 +53,11 @@ public partial class ScootersContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(100)
                 .IsUnicode(false);
+
+            // Налаштування зв’язку з Scooters
+            entity.HasMany(cs => cs.Scooters)
+                .WithOne(s => s.Station)
+                .HasForeignKey(s => s.StationId);
         });
 
         modelBuilder.Entity<Discount>(entity =>
@@ -130,6 +139,8 @@ public partial class ScootersContext : DbContext
             entity.Property(e => e.PhoneNumber)
                 .HasMaxLength(15)
                 .IsUnicode(false);
+            entity.Property(e => e.ApplicationUserId)
+                .HasMaxLength(450); // Відповідає Id в AspNetUsers
 
             entity.HasMany(d => d.Discounts).WithMany(p => p.Riders)
                 .UsingEntity<Dictionary<string, object>>(

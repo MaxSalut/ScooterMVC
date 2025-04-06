@@ -31,6 +31,9 @@ public partial class Rider : Entity, IValidatableObject
     [Range(0, double.MaxValue, ErrorMessage = "Баланс не може бути від'ємним")]
     public decimal? AccountBalance { get; set; }
 
+    public string? ApplicationUserId { get; set; } // Нове поле для зв'язку з ApplicationUser
+    public ApplicationUser? ApplicationUser { get; set; } // Навігаційна властивість
+
     public virtual ICollection<Rental> Rentals { get; set; } = new List<Rental>();
     public virtual ICollection<Discount> Discounts { get; set; } = new List<Discount>();
 
